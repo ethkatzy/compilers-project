@@ -1,13 +1,13 @@
 from dataclasses import dataclass, field
 from tokenizer import Location
-from type_checker import Int, Bool, Unit, Type
+from datatypes import Type, IntType, BoolType, UnitType
 
 
 @dataclass
 class Expression:
     """Base class for AST nodes representing expressions."""
     location: Location
-    type: Type = field(kw_only=True, default=Unit)
+    type: Type = field(kw_only=True, default=UnitType)
 
 
 @dataclass
@@ -67,7 +67,7 @@ class VarDecl(Expression):
     """AST node for variable declarations (var x = expr)"""
     name: str
     initializer: Expression
-    datatype: Int | Bool | None = None
+    datatype: IntType | BoolType | None = None
 
 
 @dataclass

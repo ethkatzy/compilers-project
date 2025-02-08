@@ -8,7 +8,7 @@ type Value = int | bool | ast.Call | None
 
 @dataclass
 class SymTab:
-    locals: dict[ast.Identifier: ast.Literal]
+    locals: dict[ast.Identifier, ast.Literal]
     parent: Optional["SymTab"] = None
 
     def lookup(self, name: str) -> Any:
@@ -49,11 +49,11 @@ GLOBAL_SYMBOLS = SymTab(locals={
 
 def interpret(node: ast.Expression, sym_tab: SymTab) -> Value:
     match node:
-        case ast.Literal(value):
+        case ast.Literal(value=value):
             return value
-        case ast.Identifier(name):
+        case ast.Identifier(name=name):
             return sym_tab.lookup(name)
-        case ast.BinaryOp(left, op, right):
+        case ast.BinaryOp(left=left, op=op, right=right):
             a = interpret(left, sym_tab)
             if op == "and":
                 return a and interpret(right, sym_tab) if bool(a) else False
@@ -66,36 +66,36 @@ def interpret(node: ast.Expression, sym_tab: SymTab) -> Value:
                     return None
                 op_func = sym_tab.lookup(op)
                 return op_func(a, b)
-        case ast.UnaryOp(op, expr):
+        case ast.UnaryOp(op=op, expr=expr):
             a: Any = interpret(expr, sym_tab)
             if op == "-":
                 op_func = sym_tab.lookup("unary_neg")
                 return op_func(a)
             op_func = sym_tab.lookup(op)
             return op_func(a)
-        case ast.IfExpr(condition, then_expr, else_expr):
+        case ast.IfExpr(condition=condition, then_expr=then_expr, else_expr=else_expr):
             if interpret(condition, sym_tab):
                 return interpret(then_expr, sym_tab)
             else:
                 return interpret(else_expr, sym_tab)
-        case ast.Program(statements):
+        case ast.Program(statements=statements):
             result = None
             for statement in statements:
                 result = interpret(statement, sym_tab)
             return result
-        case ast.Block(statements):
+        case ast.Block(statements=statements):
             new_sym_tab = SymTab(locals={}, parent=sym_tab)
             result = None
             for statement in statements:
                 result = interpret(statement, new_sym_tab)
             return result
-        case ast.VarDecl(name, initializer):
+        case ast.VarDecl(name=name, initializer=initializer):
             value = interpret(initializer, sym_tab)
             if name in sym_tab.locals:
                 raise NameError(f"Variable {name} already declared")
             sym_tab.locals[name] = value
             return value
-        case ast.Call(function, arguments):
+        case ast.Call(function=function, arguments=arguments):
             if function[:5] == "print":
                 if isinstance(arguments[0], ast.Identifier):
                     value = interpret(arguments[0], sym_tab)
@@ -118,7 +118,7 @@ def interpret(node: ast.Expression, sym_tab: SymTab) -> Value:
                     raise TypeError(f"read_int only reads integers")
             else:
                 raise Exception(f"Unexpected function: {function}")
-        case ast.While(condition, statements):
+        case ast.While(condition=condition, statements=statements):
             result = None
             while interpret(condition, sym_tab):
                 for statement in statements:
