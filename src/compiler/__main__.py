@@ -5,14 +5,21 @@ import sys
 from socketserver import ForkingTCPServer, StreamRequestHandler
 from traceback import format_exception
 from typing import Any
+from tokenizer import tokenize
+from parser import parse
+from ir_generator import extract_identifiers, generate_ir, GLOBAL_SYMTAB
+from assembler import assemble_and_get_executable
 
 
 def call_compiler(source_code: str, input_file_name: str) -> bytes:
-    # *** TODO ***
-    # Call your compiler here and return the compiled executable.
-    # Raise an exception on compilation error.
-    # *** TODO ***
-    raise NotImplementedError("Compiler not implemented")
+    try:
+        tokens = tokenize(source_code)
+        parsed = parse(tokens)
+        sym_tab = extract_identifiers(parsed, GLOBAL_SYMTAB)
+        ir_lines = generate_ir(sym_tab.locals, parsed)
+        return assemble_and_get_executable(str(ir_lines))
+    except Exception as e:
+        raise Exception(f"Compilation error: {e}")
 
 
 def main() -> int:

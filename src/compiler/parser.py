@@ -216,3 +216,5 @@ def parse(tokens: list[Token]) -> ast.Expression:
 def parser(code: str) -> ast.Expression:
     tokens = tokenize(code)
     return parse(tokens)
+
+print(parser("a + b + c"))

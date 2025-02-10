@@ -111,7 +111,11 @@ def generate_ir(root_types: dict[ir.IRVar, Type], root_expr: ast.Expression) -> 
                     visit(st, stmt)
                 return var_unit
             case ast.UnaryOp(op=op, expr=expr):
-                var_op = st.lookup(op)
+                if op == "-":
+                    neg = "unary_neg"
+                    var_op = st.lookup(neg)
+                else:
+                    var_op = st.lookup(op)
                 var_operand = visit(st, expr)
                 var_result = new_var(expr.type)
                 ins.append(ir.Call(loc, var_op, [var_operand], var_result))
@@ -153,12 +157,61 @@ def generate_ir(root_types: dict[ir.IRVar, Type], root_expr: ast.Expression) -> 
     return ins
 
 
-parsed = parser("""
-while x > 0 do {
-x = x - 1
-}
-""")
-root_types = SymTab({ir.IRVar("x"): Int, ir.IRVar(">"): Int, ir.IRVar("-"): Int})
-instructions = generate_ir(root_types, parsed)
-for inst in instructions:
-    print(inst)
+def extract_identifiers(node: ast.Expression, symTab: SymTab) -> SymTab:
+    """ Recursively extracts all identifier names from the AST and adds them to symTab with type Int. """
+    match node:
+        case ast.VarDecl(name=name, initializer=initializer, datatype=datatype):
+            if name not in symTab.locals:
+                if isinstance(initializer, int):
+                    symTab.locals[name] = Int
+                    return symTab
+                elif isinstance(initializer, bool):
+                    symTab.locals[name] = Bool
+                    return symTab
+                else:
+                    symTab.locals[name] = Unit
+                    return symTab
+        case ast.IfExpr(condition=condition, then_expr=then_expr, else_expr=else_expr):
+            symTab = extract_identifiers(then_expr, symTab)
+            if else_expr is not None:
+                symTab = extract_identifiers(else_expr, symTab)
+            return symTab
+        case ast.Call(function=function, arguments=arguments):
+            for stmt in arguments:
+                symTab = extract_identifiers(stmt, symTab)
+            return symTab
+        case ast.Block(statements=statements, result_expr=result_expr):
+            for stmt in statements:
+                symTab = extract_identifiers(stmt, symTab)
+            return symTab
+        case ast.Program(statements=statements):
+            for stmt in statements:
+                symTab = extract_identifiers(stmt, symTab)
+            return symTab
+        case ast.While(condition=condition, statements=statements):
+            for stmt in statements:
+                symTab = extract_identifiers(stmt, symTab)
+            return symTab
+        case _:
+            return symTab
+
+
+GLOBAL_SYMTAB = SymTab({ir.IRVar("+"): Int,
+                        ir.IRVar("-"): Int,
+                        ir.IRVar("*"): Int,
+                        ir.IRVar("/"): Int,
+                        ir.IRVar("%"): Int,
+                        ir.IRVar("<"): Bool,
+                        ir.IRVar("<="): Bool,
+                        ir.IRVar("=="): Bool,
+                        ir.IRVar(">="): Bool,
+                        ir.IRVar(">"): Bool,
+                        ir.IRVar("!="): Bool,
+                        ir.IRVar("unary_neg"): Int,
+                        ir.IRVar("not"): Bool,
+                        ir.IRVar("print_int"): Int,
+                        ir.IRVar("print_bool"): Bool,
+                        ir.IRVar("read_int"): Unit,
+                        })
+
+root_types = SymTab({}, GLOBAL_SYMTAB)

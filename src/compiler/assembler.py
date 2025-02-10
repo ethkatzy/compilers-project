@@ -264,10 +264,10 @@ print_bool:
     ret
 
 true_str:
-    .ascii "true\\n"
+    .ascii "true\n"
 true_str_len = . - true_str
 false_str:
-    .ascii "false\\n"
+    .ascii "false\n"
 false_str_len = . - false_str
 
 # ***** Function 'read_int' *****
@@ -368,6 +368,6 @@ read_int:
     syscall
 
 read_int_error_str:
-    .ascii "Error: read_int() failed to read input\\n"
+    .ascii "Error: read_int() failed to read input\n"
 read_int_error_str_len = . - read_int_error_str
 """
