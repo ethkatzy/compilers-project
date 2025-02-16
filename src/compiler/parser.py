@@ -36,9 +36,9 @@ def parse(tokens: list[Token]) -> ast.Expression:
         if peek().type != "int_literal":
             raise Exception(f"{peek().location}: expected an integer literal")
         token = consume()
-        if token.text == "True":
+        if token.text == "true":
             return ast.Literal(token.location, True)
-        elif token.text == "False":
+        elif token.text == "false":
             return ast.Literal(token.location, False)
         else:
             return ast.Literal(token.location, int(token.text))
@@ -216,5 +216,3 @@ def parse(tokens: list[Token]) -> ast.Expression:
 def parser(code: str) -> ast.Expression:
     tokens = tokenize(code)
     return parse(tokens)
-
-print(parser("a + b + c"))

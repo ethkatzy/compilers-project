@@ -20,7 +20,7 @@ class SymTab:
 
 
 def generate_ir(root_types: dict[ir.IRVar, Type], root_expr: ast.Expression) -> list[ir.Instruction]:
-    var_types: dict[ir.IRVar, Type] = root_types.locals.copy()
+    var_types: dict[ir.IRVar, Type] = root_types.copy()
     var_unit = ir.IRVar('unit')
     var_types[var_unit] = Unit
 
@@ -68,16 +68,24 @@ def generate_ir(root_types: dict[ir.IRVar, Type], root_expr: ast.Expression) -> 
                     ins.append(ir.Copy(loc, var_right, var_left))
                     return var_left
                 elif op in {"and", "or"}:
+                    l_skip = new_label(loc)
+                    l_right = new_label(loc)
                     l_end = new_label(loc)
                     var_left = visit(st, left)
-                    var_result = new_var(Bool)
-                    if op == "and":
-                        ins.append(ir.CondJump(loc, var_left, None, l_end))
-                    else:
-                        ins.append(ir.CondJump(loc, var_left, l_end, None))
+                    ins.append(ir.CondJump(loc, var_left, l_skip, l_right))
+                    ins.append(l_right)
                     var_right = visit(st, right)
-                    ins.append(ir.Copy(loc, var_right, var_result))
+                    extra_var = new_var(Bool)
+                    ins.append(ir.Copy(loc, var_right, extra_var))
+                    ins.append(ir.Jump(loc, l_end))
+                    ins.append(l_skip)
+                    if op == "and":
+                        ins.append(ir.LoadBoolConst(loc, False, extra_var))
+                    else:
+                        ins.append(ir.LoadBoolConst(loc, True, extra_var))
+                    ins.append(ir.Jump(loc, l_end))
                     ins.append(l_end)
+                    var_result = new_var(Bool)
                     return var_result
                 else:
                     var_op = st.lookup(op)
@@ -147,7 +155,7 @@ def generate_ir(root_types: dict[ir.IRVar, Type], root_expr: ast.Expression) -> 
                 raise Exception(f"{loc}: Unknown AST node type: {type(ast)}")
 
     root_sym_tab = SymTab(locals={})
-    for v in root_types.locals.keys():
+    for v in root_types.keys():
         root_sym_tab.locals[v.name] = v
     var_final_result = visit(root_sym_tab, root_expr)
     if var_types[var_final_result] == Int:
@@ -215,3 +223,8 @@ GLOBAL_SYMTAB = SymTab({ir.IRVar("+"): Int,
                         })
 
 root_types = SymTab({}, GLOBAL_SYMTAB)
+
+"""string = "true and true"
+tokens = parser(string)
+sym_tab = extract_identifiers(tokens, GLOBAL_SYMTAB)
+print(generate_ir(sym_tab.locals, tokens))"""

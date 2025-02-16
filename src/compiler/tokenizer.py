@@ -31,7 +31,7 @@ def tokenize(source_code: str) -> list[Token]:
         for match in token_pattern.finditer(line):
             text = match.group()
             column = match.start() + 1
-            if text.isdigit() or text == "True" or text == "False":
+            if text.isdigit() or text == "true" or text == "false":
                 type = 'int_literal'
             elif re.fullmatch(r'[_a-zA-Z][_a-zA-Z0-9]*', text):
                 type = 'identifier'
