@@ -215,7 +215,7 @@ def parse(tokens: list[Token]) -> ast.Expression:
             elif peek().type != "end":
                 raise Exception(f"{peek().location}: expected ';'")
         location = Location(0, 0)
-        if prev().text != ";":
+        if prev().text != ";" and not isinstance(expressions[-1], ast.VarDecl):
             if isinstance(expressions[-1].type, BoolType):
                 return ast.Program(location, expressions, ast.Call(location, "print_bool", [expressions[-1]]))
             elif isinstance(expressions[-1].type, IntType):
@@ -234,8 +234,3 @@ def parse(tokens: list[Token]) -> ast.Expression:
 def parser(code: str) -> ast.Expression:
     tokens = tokenize(code)
     return parse(tokens)
-
-#print(parser("""var x = 3;
-#var y = 4;
-#x = y;
-#x"""))

@@ -61,12 +61,18 @@ def generate_ir(root_types: dict[ir.IRVar, Type], root_expr: ast.Expression) -> 
                 return st.lookup(name)
             case ast.BinaryOp(left=left, op=op, right=right):
                 if op == "=":
-                    if not isinstance(left, ast.Identifier):
-                        raise Exception(f"{loc}: Left side of assignment must be a variable")
-                    var_left = st.lookup(left.name)
-                    var_right = visit(st, right)
-                    ins.append(ir.Copy(loc, var_right, var_left))
-                    return var_left
+                    if not (isinstance(left, ast.BinaryOp) and left.op == "="):
+                        if not isinstance(left, ast.Identifier):
+                            raise Exception(f"{loc}: Left side of assignment must be a variable")
+                        var_left = st.lookup(left.name)
+                        var_right = visit(st, right)
+                        ins.append(ir.Copy(loc, var_right, var_left))
+                        return var_left
+                    else:
+                        var_right = visit(st, right)
+                        ins.append(ir.Copy(loc, var_right, st.lookup(left.right.name)))
+                        var_left = visit(st, left)
+                        return var_left
                 elif op in {"and", "or"}:
                     l_skip = new_label(loc)
                     l_right = new_label(loc)
@@ -187,7 +193,7 @@ def extract_identifiers(node: ast.Expression, symTab: SymTab) -> SymTab:
                     symTab.locals[ir.IRVar(name)] = Bool
                     return symTab
                 else:
-                    symTab.locals[ir.IRVar(name)] = Unit
+                    symTab.locals[ir.IRVar(name)] = symTab.locals[ir.IRVar(initializer.name)]
                     return symTab
         case ast.IfExpr(condition=condition, then_expr=then_expr, else_expr=else_expr):
             symTab = extract_identifiers(then_expr, symTab)
@@ -234,12 +240,15 @@ GLOBAL_SYMTAB = SymTab({ir.IRVar("+"): Int,
 
 root_types = SymTab({}, GLOBAL_SYMTAB)
 
-#string = """var x = 3;
-#var y = 4;
-#x = y;
-#x"""
-#tokens = parser(string)
-#sym_tab = extract_identifiers(tokens, GLOBAL_SYMTAB)
-#ir_lines = generate_ir(sym_tab.locals, tokens)
-#for line in ir_lines:
-#    print(line)
+string = """var a = 3;
+var b = 4;
+var c = 5;
+a = b = c;
+print_int(a);
+print_int(b);
+print_int(c);"""
+tokens = parser(string)
+sym_tab = extract_identifiers(tokens, GLOBAL_SYMTAB)
+ir_lines = generate_ir(sym_tab.locals, tokens)
+for line in ir_lines:
+    print(line)
