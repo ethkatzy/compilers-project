@@ -150,11 +150,17 @@ def generate_ir(root_types: dict[ir.IRVar, Type], root_expr: ast.Expression) -> 
                 ins.append(ir.Jump(loc, l_cond))
                 ins.append(l_end)
                 return var_unit
-            case ast.Program(statements=statements, result=result):
+            case ast.Program(location=location, statements=statements, result=result):
                 if result is not None:
                     for i in range(len(statements) - 1):
                         visit(st, statements[i])
-                    visit(st, result)
+                    if result.function == "print_var":
+                        if isinstance(root_types[ir.IRVar(result.arguments[0].name)], IntType):
+                            visit(st, ast.Call(location, "print_int", result.arguments))
+                        elif isinstance(root_types[ir.IRVar(result.arguments[0].name)], BoolType):
+                            visit(st, ast.Call(location, "print_bool", result.arguments))
+                    else:
+                        visit(st, result)
                 else:
                     for stmt in statements:
                         visit(st, stmt)
@@ -172,16 +178,16 @@ def generate_ir(root_types: dict[ir.IRVar, Type], root_expr: ast.Expression) -> 
 def extract_identifiers(node: ast.Expression, symTab: SymTab) -> SymTab:
     """ Recursively extracts all identifier names from the AST and adds them to symTab with type Int. """
     match node:
-        case ast.VarDecl(name=name, initializer=initializer, datatype=datatype):
+        case ast.VarDecl(name=name, initializer=initializer):
             if name not in symTab.locals:
-                if isinstance(initializer, int):
-                    symTab.locals[name] = Int
+                if isinstance(node.type, IntType):
+                    symTab.locals[ir.IRVar(name)] = Int
                     return symTab
-                elif isinstance(initializer, bool):
-                    symTab.locals[name] = Bool
+                elif isinstance(node.type, BoolType):
+                    symTab.locals[ir.IRVar(name)] = Bool
                     return symTab
                 else:
-                    symTab.locals[name] = Unit
+                    symTab.locals[ir.IRVar(name)] = Unit
                     return symTab
         case ast.IfExpr(condition=condition, then_expr=then_expr, else_expr=else_expr):
             symTab = extract_identifiers(then_expr, symTab)
@@ -228,9 +234,12 @@ GLOBAL_SYMTAB = SymTab({ir.IRVar("+"): Int,
 
 root_types = SymTab({}, GLOBAL_SYMTAB)
 
-"""string = "-3"
-tokens = parser(string)
-sym_tab = extract_identifiers(tokens, GLOBAL_SYMTAB)
-ir_lines = generate_ir(sym_tab.locals, tokens)
-for line in ir_lines:
-    print(line)"""
+#string = """var x = 3;
+#var y = 4;
+#x = y;
+#x"""
+#tokens = parser(string)
+#sym_tab = extract_identifiers(tokens, GLOBAL_SYMTAB)
+#ir_lines = generate_ir(sym_tab.locals, tokens)
+#for line in ir_lines:
+#    print(line)

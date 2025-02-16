@@ -1,6 +1,6 @@
 from tokenizer import Token, tokenize, Location
 import astree as ast
-from datatypes import IntType, UnitType, BoolType
+from datatypes import IntType, UnitType, BoolType, Type
 
 
 def parse(tokens: list[Token]) -> ast.Expression:
@@ -48,7 +48,7 @@ def parse(tokens: list[Token]) -> ast.Expression:
         if peek().type != "identifier":
             raise Exception(f"{peek().location}: expected an identifier")
         token = consume()
-        return ast.Identifier(token.location, token.text)
+        return ast.Identifier(token.location, token.text, type=Type())
 
     def parse_if_expression() -> ast.Expression:
         token = consume("if")
@@ -188,7 +188,7 @@ def parse(tokens: list[Token]) -> ast.Expression:
         if peek().text == "=":
             consume("=")
             initializer = parse_expression()
-            return ast.VarDecl(token.location, name, initializer)
+            return ast.VarDecl(token.location, name, initializer, type=initializer.type)
         elif peek().text in {"Int, Bool", "Unit"}:
             datatype = peek().text
             consume(datatype)
@@ -197,12 +197,11 @@ def parse(tokens: list[Token]) -> ast.Expression:
             consume("=")
             initializer = parse_expression()
             if datatype == "Int":
-                return ast.VarDecl(token.location, name, initializer, IntType())
+                return ast.VarDecl(token.location, name, initializer, type=IntType())
             elif datatype == "Bool":
-                return ast.VarDecl(token.location, name, initializer, BoolType())
+                return ast.VarDecl(token.location, name, initializer, type=BoolType())
             else:
-                return ast.VarDecl(token.location, name, initializer, UnitType())
-
+                return ast.VarDecl(token.location, name, initializer, type=UnitType())
         else:
             raise Exception(f"{peek().location}: Expected data type or = after variable")
 
@@ -216,12 +215,13 @@ def parse(tokens: list[Token]) -> ast.Expression:
             elif peek().type != "end":
                 raise Exception(f"{peek().location}: expected ';'")
         location = Location(0, 0)
-        print(expressions[-1])
         if prev().text != ";":
-            if expressions[-1].type == BoolType():
+            if isinstance(expressions[-1].type, BoolType):
                 return ast.Program(location, expressions, ast.Call(location, "print_bool", [expressions[-1]]))
-            elif expressions[-1].type == IntType():
+            elif isinstance(expressions[-1].type, IntType):
                 return ast.Program(location, expressions, ast.Call(location, "print_int", [expressions[-1]]))
+            elif isinstance(expressions[-1].type, Type):
+                return ast.Program(location, expressions, ast.Call(location, "print_var", [expressions[-1]]))
         return ast.Program(location, expressions)
 
     result = parse_program()
@@ -235,4 +235,7 @@ def parser(code: str) -> ast.Expression:
     tokens = tokenize(code)
     return parse(tokens)
 
-#print(parser("""-3"""))
+#print(parser("""var x = 3;
+#var y = 4;
+#x = y;
+#x"""))

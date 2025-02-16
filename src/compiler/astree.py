@@ -67,7 +67,6 @@ class VarDecl(Expression):
     """AST node for variable declarations (var x = expr)"""
     name: str
     initializer: Expression
-    datatype: IntType | BoolType | UnitType | None = None
 
 
 @dataclass
