@@ -72,13 +72,16 @@ def generate_ir(root_types: dict[ir.IRVar, Type], root_expr: ast.Expression) -> 
                     l_right = new_label(loc)
                     l_end = new_label(loc)
                     var_left = visit(st, left)
-                    ins.append(ir.CondJump(loc, var_left, l_skip, l_right))
-                    ins.append(l_right)
+                    if op == "and":
+                        ins.append(ir.CondJump(loc, var_left, l_skip, l_right))
+                    else:
+                        ins.append(ir.CondJump(loc, var_left, l_right, l_skip))
+                    ins.append(l_skip)
                     var_right = visit(st, right)
                     extra_var = new_var(Bool)
                     ins.append(ir.Copy(loc, var_right, extra_var))
                     ins.append(ir.Jump(loc, l_end))
-                    ins.append(l_skip)
+                    ins.append(l_right)
                     if op == "and":
                         ins.append(ir.LoadBoolConst(loc, False, extra_var))
                     else:
@@ -224,7 +227,9 @@ GLOBAL_SYMTAB = SymTab({ir.IRVar("+"): Int,
 
 root_types = SymTab({}, GLOBAL_SYMTAB)
 
-"""string = "true and true"
+"""string = "2+2"
 tokens = parser(string)
 sym_tab = extract_identifiers(tokens, GLOBAL_SYMTAB)
-print(generate_ir(sym_tab.locals, tokens))"""
+ir_lines = generate_ir(sym_tab.locals, tokens)
+for line in ir_lines:
+    print(line)"""

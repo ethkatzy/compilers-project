@@ -19,6 +19,7 @@ class Locals:
     def get_ref(self, v: ir.IRVar) -> str:
         """Returns an Assembly reference like `-24(%rbp)`
         for the memory location that stores the given variable"""
+        #print(self._var_to_location)
         return self._var_to_location[v]
 
     def stack_used(self) -> int:
@@ -36,21 +37,23 @@ def get_all_ir_variables(instructions: list[ir.Instruction]) -> list[ir.IRVar]:
             result_set.add(v)
 
     for insn in instructions:
-        for field in dataclasses.fields(insn):
-            value = getattr(insn, field.name)
-            if isinstance(value, ir.IRVar):
-                add(value)
-            elif isinstance(value, list):
-                for v in value:
-                    if isinstance(v, ir.IRVar):
-                        add(v)
+        match insn:
+            case ir.LoadBoolConst(value=value, dest=dest):
+                add(dest)
+            case ir.LoadIntConst(value=value, dest=dest):
+                add(dest)
+            case ir.Copy(source=source, dest=dest):
+                add(dest)
+            case ir.Call(fun=fun, args=args, dest=dest):
+                add(dest)
+            case _:
+                continue
     return result_list
 
 
 def generate_assembly(instructions: list[ir.Instruction]) -> str:
     lines = []
     def emit(line: str) -> None: lines.append(line)
-
     locals = Locals(
         variables=get_all_ir_variables(instructions)
     )
@@ -90,21 +93,21 @@ def generate_assembly(instructions: list[ir.Instruction]) -> str:
                 if then_label:
                     emit(f"jne .{then_label.name}")
                 if else_label:
-                    emit(f"jne .{else_label.name}")
+                    emit(f"jmp .{else_label.name}")
             case ir.Call(fun=fun, args=args, dest=dest):
-                arg_registers = ["%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"]
                 arg_refs = [locals.get_ref(arg) for arg in args]
-                if fun in all_intrinsics:
-                    all_intrinsics[fun](IntrinsicArgs(
+                if str(fun) in all_intrinsics:
+                    all_intrinsics[str(fun)](IntrinsicArgs(
                         arg_refs=arg_refs,
                         result_register="%rax",
                         emit=emit
                     ))
+                    emit(f"movq %rax, {locals.get_ref(dest)}")
                 else:
                     for i, arg in enumerate(args[:6]):
                         emit(f"movq {arg_refs[i]}, %rdi")
                     emit(f"callq {fun}")
-                    emit(f"movq %rax, {locals.get_ref(fun)}")
+                    emit(f"movq %rax, {locals.get_ref(dest)}")
     emit("movq $0, %rax")
     emit("movq %rbp, %rsp")
     emit("popq %rbp")
