@@ -26,6 +26,9 @@ class Locals:
         """Returns the number of bytes of stack space needed for the local variables."""
         return self._stack_used
 
+    def __len__(self):
+        return len(self._var_to_location)
+
 
 def get_all_ir_variables(instructions: list[ir.Instruction]) -> list[ir.IRVar]:
     result_list: list[ir.IRVar] = []
@@ -66,7 +69,7 @@ def generate_assembly(instructions: list[ir.Instruction]) -> str:
     emit("main:")
     emit("pushq %rbp")
     emit("movq %rsp, %rbp")
-    emit("subq $32, %rsp")
+    emit(f"subq ${8 * len(locals)}, %rsp")
 
     for insn in instructions:
         emit('# ' + str(insn))

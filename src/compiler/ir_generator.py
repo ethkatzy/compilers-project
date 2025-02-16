@@ -122,10 +122,11 @@ def generate_ir(root_types: dict[ir.IRVar, Type], root_expr: ast.Expression) -> 
                 return var_unit
             case ast.UnaryOp(op=op, expr=expr):
                 if op == "-":
-                    neg = "unary_neg"
+                    neg = "unary_-"
                     var_op = st.lookup(neg)
                 else:
-                    var_op = st.lookup(op)
+                    neg = "unary_not"
+                    var_op = st.lookup(neg)
                 var_operand = visit(st, expr)
                 var_result = new_var(expr.type)
                 ins.append(ir.Call(loc, var_op, [var_operand], var_result))
@@ -218,8 +219,8 @@ GLOBAL_SYMTAB = SymTab({ir.IRVar("+"): Int,
                         ir.IRVar(">="): Bool,
                         ir.IRVar(">"): Bool,
                         ir.IRVar("!="): Bool,
-                        ir.IRVar("unary_neg"): Int,
-                        ir.IRVar("not"): Bool,
+                        ir.IRVar("unary_-"): Int,
+                        ir.IRVar("unary_not"): Bool,
                         ir.IRVar("print_int"): Int,
                         ir.IRVar("print_bool"): Bool,
                         ir.IRVar("read_int"): Unit,
@@ -227,7 +228,7 @@ GLOBAL_SYMTAB = SymTab({ir.IRVar("+"): Int,
 
 root_types = SymTab({}, GLOBAL_SYMTAB)
 
-"""string = "2+2"
+"""string = "-3"
 tokens = parser(string)
 sym_tab = extract_identifiers(tokens, GLOBAL_SYMTAB)
 ir_lines = generate_ir(sym_tab.locals, tokens)

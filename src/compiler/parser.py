@@ -153,7 +153,12 @@ def parse(tokens: list[Token]) -> ast.Expression:
     def parse_unary_op(op: str) -> ast.UnaryOp:
         token = consume(op)
         expr = parse_expression(8)
-        return ast.UnaryOp(token.location, op, expr)
+        if op == "-":
+            return ast.UnaryOp(token.location, op, expr, type=IntType())
+        elif op == "not":
+            return ast.UnaryOp(token.location, op, expr, type=BoolType())
+        else:
+            raise Exception(f"{peek().location}: Unknown unary operator, expected 'not' or '{op}'")
 
     def parse_function_call(identifier: ast.Identifier) -> ast.Call:
         token = consume("(")
@@ -211,6 +216,7 @@ def parse(tokens: list[Token]) -> ast.Expression:
             elif peek().type != "end":
                 raise Exception(f"{peek().location}: expected ';'")
         location = Location(0, 0)
+        print(expressions[-1])
         if prev().text != ";":
             if expressions[-1].type == BoolType():
                 return ast.Program(location, expressions, ast.Call(location, "print_bool", [expressions[-1]]))
@@ -229,4 +235,4 @@ def parser(code: str) -> ast.Expression:
     tokens = tokenize(code)
     return parse(tokens)
 
-#print(parser("""true or true"""))
+#print(parser("""-3"""))
