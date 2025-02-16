@@ -102,8 +102,10 @@ def generate_assembly(instructions: list[ir.Instruction]) -> str:
                     ))
                 else:
                     for i, arg in enumerate(args[:6]):
-                        emit(f"movq {arg}, {arg_refs[i]}")
-                    emit(f"movq %rax, {locals.get_ref(dest)}")
+                        emit(f"movq {arg_refs[i]}, %rdi")
+                    emit(f"callq {fun}")
+                    emit(f"movq %rax, {locals.get_ref(fun)}")
+    emit("movq $0, %rax")
     emit("movq %rbp, %rsp")
     emit("popq %rbp")
     emit("ret")

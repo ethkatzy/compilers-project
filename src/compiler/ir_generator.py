@@ -1,6 +1,6 @@
 import ir
 import astree as ast
-from datatypes import Bool, Int, Type, Unit
+from datatypes import Bool, Int, Type, Unit, IntType, BoolType
 from tokenizer import Location
 from parser import parser
 from dataclasses import dataclass
@@ -85,8 +85,7 @@ def generate_ir(root_types: dict[ir.IRVar, Type], root_expr: ast.Expression) -> 
                         ins.append(ir.LoadBoolConst(loc, True, extra_var))
                     ins.append(ir.Jump(loc, l_end))
                     ins.append(l_end)
-                    var_result = new_var(Bool)
-                    return var_result
+                    return extra_var
                 else:
                     var_op = st.lookup(op)
                     var_left = visit(st, left)
@@ -109,7 +108,7 @@ def generate_ir(root_types: dict[ir.IRVar, Type], root_expr: ast.Expression) -> 
                 ins.append(l_end)
                 return var_then if not else_expr else new_var(expr.type)
             case ast.Call(function=function, arguments=arguments):
-                var_func = visit(st, function)
+                var_func = ir.IRVar(function)
                 var_args = [visit(st, arg) for arg in arguments]
                 var_result = new_var(expr.type)
                 ins.append(ir.Call(loc, var_func, var_args, var_result))
@@ -147,9 +146,14 @@ def generate_ir(root_types: dict[ir.IRVar, Type], root_expr: ast.Expression) -> 
                 ins.append(ir.Jump(loc, l_cond))
                 ins.append(l_end)
                 return var_unit
-            case ast.Program(statements=statements):
-                for stmt in statements:
-                    visit(st, stmt)
+            case ast.Program(statements=statements, result=result):
+                if result is not None:
+                    for i in range(len(statements) - 1):
+                        visit(st, statements[i])
+                    visit(st, result)
+                else:
+                    for stmt in statements:
+                        visit(st, stmt)
                 return var_unit
             case _:
                 raise Exception(f"{loc}: Unknown AST node type: {type(ast)}")
@@ -158,10 +162,6 @@ def generate_ir(root_types: dict[ir.IRVar, Type], root_expr: ast.Expression) -> 
     for v in root_types.keys():
         root_sym_tab.locals[v.name] = v
     var_final_result = visit(root_sym_tab, root_expr)
-    if var_types[var_final_result] == Int:
-        ins.append(ir.Call(root_expr.location, ir.IRVar("print_int"), [var_final_result], var_unit))
-    elif var_types[var_final_result] == Bool:
-        ins.append(ir.Call(root_expr.location, ir.IRVar("print_bool"), [var_final_result], var_unit))
     return ins
 
 

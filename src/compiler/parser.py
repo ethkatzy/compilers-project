@@ -1,5 +1,6 @@
 from tokenizer import Token, tokenize, Location
 import astree as ast
+from datatypes import IntType, UnitType, BoolType
 
 
 def parse(tokens: list[Token]) -> ast.Expression:
@@ -37,11 +38,11 @@ def parse(tokens: list[Token]) -> ast.Expression:
             raise Exception(f"{peek().location}: expected an integer literal")
         token = consume()
         if token.text == "true":
-            return ast.Literal(token.location, True)
+            return ast.Literal(token.location, True, type=BoolType())
         elif token.text == "false":
-            return ast.Literal(token.location, False)
+            return ast.Literal(token.location, False, type=BoolType())
         else:
-            return ast.Literal(token.location, int(token.text))
+            return ast.Literal(token.location, int(token.text), type=IntType())
 
     def parse_identifier() -> ast.Identifier:
         if peek().type != "identifier":
@@ -74,23 +75,23 @@ def parse(tokens: list[Token]) -> ast.Expression:
             elif op in {"or"} and precedence < 2:
                 token = consume("or")
                 right = parse_expression(2)
-                left = ast.BinaryOp(token.location, left, op, right)
+                left = ast.BinaryOp(token.location, left, op, right, type=BoolType())
             elif op in {"and"} and precedence < 3:
                 token = consume("and")
                 right = parse_expression(3)
-                left = ast.BinaryOp(token.location, left, op, right)
+                left = ast.BinaryOp(token.location, left, op, right, type=BoolType())
             elif op in {"==", "!=", "<", "<=", ">", ">="} and precedence < 4:
                 token = consume(op)
                 right = parse_expression(4)
-                left = ast.BinaryOp(token.location, left, op, right)
+                left = ast.BinaryOp(token.location, left, op, right, type=BoolType())
             elif op in {"+", "-"} and precedence < 5:
                 token = consume(op)
                 right = parse_expression(5)
-                left = ast.BinaryOp(token.location, left, op, right)
+                left = ast.BinaryOp(token.location, left, op, right, type=IntType())
             elif op in {"*", "/", "%"} and precedence < 6:
                 token = consume(op)
                 right = parse_expression(6)
-                left = ast.BinaryOp(token.location, left, op, right)
+                left = ast.BinaryOp(token.location, left, op, right, type=IntType())
             else:
                 break
         return left
@@ -183,14 +184,20 @@ def parse(tokens: list[Token]) -> ast.Expression:
             consume("=")
             initializer = parse_expression()
             return ast.VarDecl(token.location, name, initializer)
-        elif peek().text == "Bool" or peek().text == "Int":
-            datatype = peek().type
+        elif peek().text in {"Int, Bool", "Unit"}:
+            datatype = peek().text
             consume(datatype)
             if peek().text != "=":
                 raise Exception(f"{peek().location}: expected '=' after variable")
             consume("=")
             initializer = parse_expression()
-            return ast.VarDecl(token.location, name, initializer, datatype)
+            if datatype == "Int":
+                return ast.VarDecl(token.location, name, initializer, IntType())
+            elif datatype == "Bool":
+                return ast.VarDecl(token.location, name, initializer, BoolType())
+            else:
+                return ast.VarDecl(token.location, name, initializer, UnitType())
+
         else:
             raise Exception(f"{peek().location}: Expected data type or = after variable")
 
@@ -204,6 +211,11 @@ def parse(tokens: list[Token]) -> ast.Expression:
             elif peek().type != "end":
                 raise Exception(f"{peek().location}: expected ';'")
         location = Location(0, 0)
+        if prev().text != ";":
+            if expressions[-1].type == BoolType():
+                return ast.Program(location, expressions, ast.Call(location, "print_bool", [expressions[-1]]))
+            elif expressions[-1].type == IntType():
+                return ast.Program(location, expressions, ast.Call(location, "print_int", [expressions[-1]]))
         return ast.Program(location, expressions)
 
     result = parse_program()
@@ -216,3 +228,5 @@ def parse(tokens: list[Token]) -> ast.Expression:
 def parser(code: str) -> ast.Expression:
     tokens = tokenize(code)
     return parse(tokens)
+
+#print(parser("""true or true"""))
