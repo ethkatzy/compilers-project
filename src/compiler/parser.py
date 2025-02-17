@@ -1,6 +1,6 @@
 from tokenizer import Token, tokenize, Location
 import astree as ast
-from datatypes import IntType, UnitType, BoolType, Type
+from datatypes import IntType, UnitType, BoolType
 
 
 def parse(tokens: list[Token]) -> ast.Expression:
@@ -48,7 +48,7 @@ def parse(tokens: list[Token]) -> ast.Expression:
         if peek().type != "identifier":
             raise Exception(f"{peek().location}: expected an identifier")
         token = consume()
-        return ast.Identifier(token.location, token.text, type=Type())
+        return ast.Identifier(token.location, token.text)
 
     def parse_if_expression() -> ast.Expression:
         token = consume("if")
@@ -59,7 +59,11 @@ def parse(tokens: list[Token]) -> ast.Expression:
         if peek().text == "else":
             consume("else")
             else_expr = parse_expression()
-        return ast.IfExpr(token.location, condition, then_expr, else_expr)
+            if then_expr.type != else_expr.type:
+                raise Exception(f"{then_expr.location}: if-clause branches must have the same type, got {then_expr.type} and {else_expr.type}")
+            return ast.IfExpr(token.location, condition, then_expr, else_expr, type=then_expr.type)
+        else:
+            return ast.IfExpr(token.location, condition, then_expr, else_expr)
 
     def parse_expression(precedence: int = 0, allowVarDecl: bool = False) -> ast.Expression:
         """Parse expressions based on operator precedence."""
@@ -145,10 +149,59 @@ def parse(tokens: list[Token]) -> ast.Expression:
                 consume(";")
             elif peek().text != "}" and prev().text != "}":
                 raise Exception(f"{peek().location}: expected ';' or '}}'")
+        final_semi_colon = False if prev().text != ";" else True
         consume("}")
-
-        result_expr = statements[-1] if statements else ast.Literal(token.location, value=None)
+        result_expr = final_statement(statements[-1], False) if (not final_semi_colon and statements) else None
         return ast.Block(token.location, statements, result_expr)
+
+    def final_statement(stmt: ast.Expression, final_flag: bool) -> ast.Expression | None:
+        loc = stmt.location
+        match stmt:
+            case ast.Literal(type=type):
+                if isinstance(type, IntType):
+                    return ast.Call(loc, "print_int", [stmt]) if final_flag else stmt
+                elif isinstance(type, BoolType):
+                    return ast.Call(loc, "print_bool", [stmt]) if final_flag else stmt
+                else:
+                    return None
+            case ast.Identifier:
+                return ast.Call(loc, "print_var", [stmt]) if final_flag else stmt
+            case ast.BinaryOp(type=type, right=right):
+                if isinstance(type, IntType):
+                    return ast.Call(loc, "print_int", [stmt]) if final_flag else stmt
+                elif isinstance(type, BoolType):
+                    return ast.Call(loc, "print_bool", [stmt]) if final_flag else stmt
+                else:
+                    return final_statement(right, True) if final_flag else right
+            case ast.IfExpr(else_expr=else_expr, type=type):
+                if else_expr is None:
+                    return None
+                else:
+                    if isinstance(type, IntType):
+                        return ast.Call(loc, "print_int", [stmt]) if final_flag else stmt
+                    elif isinstance(type, BoolType):
+                        return ast.Call(loc, "print_bool", [stmt]) if final_flag else stmt
+            case ast.Call(function=function):
+                if function == "read_int":
+                    return ast.Call(loc, "print_int", [stmt]) if final_flag else stmt
+                else:
+                    return None
+            case ast.UnaryOp(type=type):
+                if isinstance(type, IntType):
+                    return ast.Call(loc, "print_int", [stmt]) if final_flag else stmt
+                else:
+                    return ast.Call(loc, "print_bool", [stmt]) if final_flag else stmt
+            case ast.Block(result_expr=result_expr):
+                if result_expr is not None:
+                    return final_statement(result_expr, final_flag)
+                else:
+                    return None
+            case ast.VarDecl:
+                return None
+            case ast.While:
+                return None
+            case _:
+                raise Exception(f"{stmt.location}: Unknown AST node {stmt}")
 
     def parse_unary_op(op: str) -> ast.UnaryOp:
         token = consume(op)
@@ -215,13 +268,9 @@ def parse(tokens: list[Token]) -> ast.Expression:
             elif peek().type != "end":
                 raise Exception(f"{peek().location}: expected ';'")
         location = Location(0, 0)
-        if prev().text != ";" and not isinstance(expressions[-1], ast.VarDecl):
-            if isinstance(expressions[-1].type, BoolType):
-                return ast.Program(location, expressions, ast.Call(location, "print_bool", [expressions[-1]]))
-            elif isinstance(expressions[-1].type, IntType):
-                return ast.Program(location, expressions, ast.Call(location, "print_int", [expressions[-1]]))
-            elif isinstance(expressions[-1].type, Type):
-                return ast.Program(location, expressions, ast.Call(location, "print_var", [expressions[-1]]))
+        if prev().text != ";":
+            final_expr = final_statement(expressions[-1], True)
+            return ast.Program(location, expressions, final_expr)
         return ast.Program(location, expressions)
 
     result = parse_program()
@@ -234,3 +283,6 @@ def parse(tokens: list[Token]) -> ast.Expression:
 def parser(code: str) -> ast.Expression:
     tokens = tokenize(code)
     return parse(tokens)
+
+
+#print(parser("""{ 1; 2 }"""))

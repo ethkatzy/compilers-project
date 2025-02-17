@@ -41,7 +41,7 @@ def generate_ir(root_types: dict[ir.IRVar, Type], root_expr: ast.Expression) -> 
         label_counter += 1
         return label_name
 
-    def visit(st: SymTab, expr: ast.Expression) -> ir.IRVar:
+    def visit(st: SymTab, expr: ast.Expression, final_expression: bool = False) -> ir.IRVar:
         loc = expr.location
         match expr:
             case ast.Literal(value=value):
@@ -103,19 +103,32 @@ def generate_ir(root_types: dict[ir.IRVar, Type], root_expr: ast.Expression) -> 
                     ins.append(ir.Call(loc, var_op, [var_left, var_right], var_result))
                     return var_result
             case ast.IfExpr(condition=condition, then_expr=then_expr, else_expr=else_expr):
-                l_then = new_label(loc)
-                l_else = new_label(loc) if else_expr else None
-                l_end = new_label(loc)
-                var_cond = visit(st, condition)
-                ins.append(ir.CondJump(loc, var_cond, l_then, l_else or l_end))
-                ins.append(l_then)
-                var_then = visit(st, then_expr)
-                ins.append(ir.Jump(loc, l_end))
-                if else_expr:
+                if else_expr is not None:
+                    l_then = new_label(loc)
+                    l_else = new_label(loc)
+                    l_end = new_label(loc)
+                    var_cond = visit(st, condition)
+                    ins.append(ir.CondJump(loc, var_cond, l_then, l_else))
+                    ins.append(l_then)
+                    var_result = new_var(expr.type)
+                    var_then = visit(st, then_expr)
+                    ins.append(ir.Copy(loc, var_then, var_result))
+                    ins.append(ir.Jump(loc, l_else))
                     ins.append(l_else)
                     var_else = visit(st, else_expr)
-                ins.append(l_end)
-                return var_then if not else_expr else new_var(expr.type)
+                    ins.append(ir.Copy(loc, var_else, var_result))
+                    ins.append(l_end)
+                    return var_result
+                else:
+                    l_then = new_label(loc)
+                    l_end = new_label(loc)
+                    var_cond = visit(st, condition)
+                    ins.append(ir.CondJump(loc, var_cond, l_then, l_end))
+                    ins.append(l_then)
+                    var_then = visit(st, then_expr)
+                    ins.append(ir.Jump(loc, l_end))
+                    ins.append(l_end)
+                    return var_unit
             case ast.Call(function=function, arguments=arguments):
                 var_func = ir.IRVar(function)
                 var_args = [visit(st, arg) for arg in arguments]
@@ -123,9 +136,18 @@ def generate_ir(root_types: dict[ir.IRVar, Type], root_expr: ast.Expression) -> 
                 ins.append(ir.Call(loc, var_func, var_args, var_result))
                 return var_result
             case ast.Block(statements=statements, result_expr=result_expr):
-                for stmt in statements:
-                    visit(st, stmt)
-                return var_unit
+                if result_expr is not None:
+                    for i in range(len(statements) - 1):
+                        visit(st, statements[i])
+                    if final_expression:
+                        return var_unit
+                    else:
+                        var_result = visit(st, result_expr)
+                        return var_result
+                else:
+                    for stmt in statements:
+                        visit(st, stmt)
+                        return var_unit
             case ast.UnaryOp(op=op, expr=expr):
                 if op == "-":
                     neg = "unary_-"
@@ -160,13 +182,15 @@ def generate_ir(root_types: dict[ir.IRVar, Type], root_expr: ast.Expression) -> 
                 if result is not None:
                     for i in range(len(statements) - 1):
                         visit(st, statements[i])
+                    if isinstance(statements[-1], ast.Block):
+                        visit(st, statements[-1], True)
                     if result.function == "print_var":
                         if isinstance(root_types[ir.IRVar(result.arguments[0].name)], IntType):
-                            visit(st, ast.Call(location, "print_int", result.arguments))
+                            visit(st, ast.Call(location, "print_int", result.arguments), True)
                         elif isinstance(root_types[ir.IRVar(result.arguments[0].name)], BoolType):
-                            visit(st, ast.Call(location, "print_bool", result.arguments))
+                            visit(st, ast.Call(location, "print_bool", result.arguments), True)
                     else:
-                        visit(st, result)
+                        visit(st, result, True)
                 else:
                     for stmt in statements:
                         visit(st, stmt)
@@ -240,15 +264,9 @@ GLOBAL_SYMTAB = SymTab({ir.IRVar("+"): Int,
 
 root_types = SymTab({}, GLOBAL_SYMTAB)
 
-string = """var a = 3;
-var b = 4;
-var c = 5;
-a = b = c;
-print_int(a);
-print_int(b);
-print_int(c);"""
-tokens = parser(string)
-sym_tab = extract_identifiers(tokens, GLOBAL_SYMTAB)
-ir_lines = generate_ir(sym_tab.locals, tokens)
-for line in ir_lines:
-    print(line)
+#string = """if 1 < 2 then 2 else 3"""
+#tokens = parser(string)
+#sym_tab = extract_identifiers(tokens, GLOBAL_SYMTAB)
+#ir_lines = generate_ir(sym_tab.locals, tokens)
+#for line in ir_lines:
+#    print(line)

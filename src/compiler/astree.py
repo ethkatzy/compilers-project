@@ -59,7 +59,7 @@ class UnaryOp(Expression):
 class Block(Expression):
     """AST node for a block of expressions inside {}"""
     statements: list[Expression]
-    result_expr: Expression
+    result_expr: Expression | None = None
 
 
 @dataclass
