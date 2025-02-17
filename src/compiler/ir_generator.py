@@ -72,8 +72,11 @@ def generate_ir(root_table: SymTab, root_expr: ast.Expression) -> list[ir.Instru
                     if not (isinstance(left, ast.BinaryOp) and left.op == "="):
                         if not isinstance(left, ast.Identifier):
                             raise Exception(f"{loc}: Left side of assignment must be a variable")
-                        var_left = st.local_lookup(left.name, right.type)
-                        if var_left is None:
+                        if st.local_lookup(left.name, Int) is not None:
+                            var_left = st.local_lookup(left.name, Int)
+                        elif st.local_lookup(left.name, Bool) is not None:
+                            var_left = st.local_lookup(left.name, Bool)
+                        else:
                             raise Exception(f"{loc}: Undefined variable: {left.name} or assigning wrong type {right.type}")
                         var_right = visit(st, right)
                         ins.append(ir.Copy(loc, var_right, var_left))
@@ -193,9 +196,14 @@ def generate_ir(root_table: SymTab, root_expr: ast.Expression) -> list[ir.Instru
                     t = Int
                 elif isinstance(type, BoolType):
                     t = Bool
+                else:
+                    if st.local_lookup(initializer.name, Int) is not None:
+                        t = Int
+                    elif st.local_lookup(initializer.name, Bool) is not None:
+                        t = Bool
                 if st.local_lookup(name, t) is None:
                     var_value = visit(st, initializer)
-                    var_decl, st = new_var(type, st, name)
+                    var_decl, st = new_var(t, st, name)
                     ins.append(ir.Copy(loc, var_value, var_decl))
                     return var_unit
                 else:
@@ -220,9 +228,9 @@ def generate_ir(root_table: SymTab, root_expr: ast.Expression) -> list[ir.Instru
                     if isinstance(statements[-1], ast.Block):
                         visit(st, statements[-1], True)
                     if result.function == "print_var":
-                        if st.lookup(result.arguments[0].name, Int):
+                        if st.local_lookup(result.arguments[0].name, Int) is not None:
                             visit(st, ast.Call(location, "print_int", result.arguments), True)
-                        elif st.lookup(result.arguments[0].name, Bool):
+                        elif st.local_lookup(result.arguments[0].name, Bool) is not None:
                             visit(st, ast.Call(location, "print_bool", result.arguments), True)
                     else:
                         visit(st, result, True)
@@ -257,11 +265,9 @@ GLOBAL_SYMTAB = SymTab({("+", Int): ir.IRVar("+"),
                         })
 
 #string = """var x = 3;
-#{
-#    var x = 4;
-#    x = 5;
-#}
-#x"""
+#var y = x;
+#x = 4;
+#y"""
 #tokens = parser(string)
 #ir_lines = generate_ir(GLOBAL_SYMTAB, tokens)
 #for line in ir_lines:

@@ -7,7 +7,7 @@ from traceback import format_exception
 from typing import Any
 from tokenizer import tokenize
 from parser import parse
-from ir_generator import extract_identifiers, generate_ir, GLOBAL_SYMTAB
+from ir_generator import generate_ir, GLOBAL_SYMTAB
 from assembler import assemble_and_get_executable
 from assembly_generator import generate_assembly
 
@@ -16,8 +16,7 @@ def call_compiler(source_code: str, input_file_name: str) -> bytes:
     try:
         tokens = tokenize(source_code)
         parsed = parse(tokens)
-        sym_tab = extract_identifiers(parsed, GLOBAL_SYMTAB)
-        ir_lines = generate_ir(sym_tab.locals, parsed)
+        ir_lines = generate_ir(GLOBAL_SYMTAB, parsed)
         assembly_code = generate_assembly(ir_lines)
         return assemble_and_get_executable(assembly_code)
     except Exception as e:

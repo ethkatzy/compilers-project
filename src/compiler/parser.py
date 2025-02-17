@@ -90,12 +90,18 @@ def parse(tokens: list[Token]) -> ast.Expression:
                 if not isinstance(left.type, BoolType) or not isinstance(right.type, BoolType):
                     raise Exception(f"{token.location}: 'and' requires two Bools, got {left.type} and {right.type}")
                 left = ast.BinaryOp(token.location, left, op, right, type=BoolType())
-            elif op in {"==", "!=", "<", "<=", ">", ">="} and precedence < 4:
+            elif op in {"==", "!="} and precedence < 4:
+                token = consume(op)
+                right = parse_expression(4)
+                if left.type != right.type:
+                    raise Exception(f"{token.location}: '{op}' requires two of the same type, got {left.type} and {right.type}")
+                left = ast.BinaryOp(token.location, left, op, right, type=BoolType())
+            elif op in {"<", "<=", ">", ">="} and precedence < 4:
                 token = consume(op)
                 right = parse_expression(4)
                 if not isinstance(left.type, IntType) or not isinstance(right.type, IntType):
                     raise Exception(f"{token.location}: '{op}' requires two Ints, got {left.type} and {right.type}")
-                left = ast.BinaryOp(token.location, left, op, right, type=IntType())
+                left = ast.BinaryOp(token.location, left, op, right, type=BoolType())
             elif op in {"+", "-"} and precedence < 5:
                 token = consume(op)
                 right = parse_expression(5)
