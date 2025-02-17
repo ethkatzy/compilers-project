@@ -113,7 +113,7 @@ def generate_ir(root_types: dict[ir.IRVar, Type], root_expr: ast.Expression) -> 
                     var_result = new_var(expr.type)
                     var_then = visit(st, then_expr)
                     ins.append(ir.Copy(loc, var_then, var_result))
-                    ins.append(ir.Jump(loc, l_else))
+                    ins.append(ir.Jump(loc, l_end))
                     ins.append(l_else)
                     var_else = visit(st, else_expr)
                     ins.append(ir.Copy(loc, var_else, var_result))
@@ -264,9 +264,15 @@ GLOBAL_SYMTAB = SymTab({ir.IRVar("+"): Int,
 
 root_types = SymTab({}, GLOBAL_SYMTAB)
 
-#string = """if 1 < 2 then 2 else 3"""
-#tokens = parser(string)
-#sym_tab = extract_identifiers(tokens, GLOBAL_SYMTAB)
-#ir_lines = generate_ir(sym_tab.locals, tokens)
-#for line in ir_lines:
-#    print(line)
+string = """var i = 1;
+var s = 0;
+while i <= 5 do {
+    s = s + i;
+    i = i + 1;
+}
+s"""
+tokens = parser(string)
+sym_tab = extract_identifiers(tokens, GLOBAL_SYMTAB)
+ir_lines = generate_ir(sym_tab.locals, tokens)
+for line in ir_lines:
+    print(line)

@@ -164,7 +164,7 @@ def parse(tokens: list[Token]) -> ast.Expression:
                     return ast.Call(loc, "print_bool", [stmt]) if final_flag else stmt
                 else:
                     return None
-            case ast.Identifier:
+            case ast.Identifier():
                 return ast.Call(loc, "print_var", [stmt]) if final_flag else stmt
             case ast.BinaryOp(type=type, right=right):
                 if isinstance(type, IntType):
@@ -196,9 +196,9 @@ def parse(tokens: list[Token]) -> ast.Expression:
                     return final_statement(result_expr, final_flag)
                 else:
                     return None
-            case ast.VarDecl:
+            case ast.VarDecl():
                 return None
-            case ast.While:
+            case ast.While():
                 return None
             case _:
                 raise Exception(f"{stmt.location}: Unknown AST node {stmt}")
@@ -263,7 +263,10 @@ def parse(tokens: list[Token]) -> ast.Expression:
         while peek().type != "end":
             expr = parse_expression(allowVarDecl=True)
             expressions.append(expr)
-            if peek().text == ";":
+            if prev().text == "}":
+                if peek().text == ";":
+                    consume(";")
+            elif peek().text == ";":
                 consume(";")
             elif peek().type != "end":
                 raise Exception(f"{peek().location}: expected ';'")
@@ -285,4 +288,15 @@ def parser(code: str) -> ast.Expression:
     return parse(tokens)
 
 
-#print(parser("""{ 1; 2 }"""))
+print(parser("""var x = 0;
+while x < 5 do {
+    var y = x;
+
+    while y > 0 do {
+        y = y - 1;
+        print_int(y);
+    };
+    x = x + 1;
+    print_int(x);
+};
+print_int(x);"""))

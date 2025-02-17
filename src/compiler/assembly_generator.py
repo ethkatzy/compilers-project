@@ -46,6 +46,7 @@ def get_all_ir_variables(instructions: list[ir.Instruction]) -> list[ir.IRVar]:
             case ir.LoadIntConst(value=value, dest=dest):
                 add(dest)
             case ir.Copy(source=source, dest=dest):
+                add(source)
                 add(dest)
             case ir.Call(fun=fun, args=args, dest=dest):
                 add(dest)

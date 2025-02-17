@@ -19,7 +19,7 @@ def tokenize(source_code: str) -> list[Token]:
     token_pattern = re.compile(
         r'\b[_a-zA-Z][_a-zA-Z0-9]*\b'  
         r'|\b\d+\b'               
-        r'|==|!=|<=|>=|<|>|=|\+|\-|\*|/'
+        r'|==|!=|<=|>=|%|<|>|=|\+|\-|\*|/'
         r'|[(){}.,;]'
     )
     comment_pattern = re.compile(r'//.*|#.*')
@@ -35,7 +35,7 @@ def tokenize(source_code: str) -> list[Token]:
                 type = 'int_literal'
             elif re.fullmatch(r'[_a-zA-Z][_a-zA-Z0-9]*', text):
                 type = 'identifier'
-            elif text in {'+', '-', '*', '/', '=', '==', '!=', '<', '<=', '>', '>='}:
+            elif text in {'+', '-', '*', '/', '%', '=', '==', '!=', '<', '<=', '>', '>='}:
                 type = 'operator'
             elif text in {'(', ')', '{', '}', ',', ';'}:
                 type = 'punctuation'
