@@ -9,31 +9,34 @@ from typing import Any, Optional
 
 @dataclass
 class SymTab:
-    locals: dict[ir.IRVar, Type]
+    locals: dict[(str | None, Type), ir.IRVar]
     parent: Optional["SymTab"] = None
 
-    def lookup(self, name) -> Any:
-        if name in self.locals:
-            return self.locals[name]
+    def local_lookup(self, name: str, t: Type) -> Any:
+        return self.locals[(name, t)] if (name, t) in self.locals else None
+
+    def lookup(self, name: str, t: Type) -> Any:
+        if (name, t) in self.locals:
+            return self.locals[(name, t)]
+        elif self.parent is not None:
+            return self.parent.lookup(name, t)
         else:
             raise NameError(f"Undefined symbol: {name}")
 
 
-def generate_ir(root_types: dict[ir.IRVar, Type], root_expr: ast.Expression) -> list[ir.Instruction]:
-    var_types: dict[ir.IRVar, Type] = root_types.copy()
+def generate_ir(root_table: SymTab, root_expr: ast.Expression) -> list[ir.Instruction]:
     var_unit = ir.IRVar('unit')
-    var_types[var_unit] = Unit
-
     counter = 1
     ins: list[ir.Instruction] = []
     label_counter = 1
 
-    def new_var(t: Type) -> ir.IRVar:
+    def new_var(t: Type, st: SymTab, name: str | None = None):
         nonlocal counter
         var = ir.IRVar(f"x{counter}")
-        var_types[var] = t
+        if name is not None:
+            st.locals[(name, t)] = var
         counter += 1
-        return var
+        return var, st
 
     def new_label(loc: Location) -> ir.Label:
         nonlocal label_counter
@@ -47,30 +50,42 @@ def generate_ir(root_types: dict[ir.IRVar, Type], root_expr: ast.Expression) -> 
             case ast.Literal(value=value):
                 match value:
                     case bool():
-                        var = new_var(Bool)
+                        var, st = new_var(Bool, st)
                         ins.append(ir.LoadBoolConst(loc, value, var))
                     case int():
-                        var = new_var(Int)
+                        var, st = new_var(Bool, st)
                         ins.append(ir.LoadIntConst(loc, value, var))
                     case None:
                         var = var_unit
                     case _:
-                        raise Exception(f"{loc}: unsupported literal: {type(value)}")
+                        raise Exception(f"{loc}: unsupported literal: {value}")
                 return var
-            case ast.Identifier(name=name):
-                return st.lookup(name)
-            case ast.BinaryOp(left=left, op=op, right=right):
+            case ast.Identifier(name=name, type=type):
+                if st.local_lookup(name, Int) is not None:
+                    return st.local_lookup(name, Int)
+                elif st.local_lookup(name, Bool) is not None:
+                    return st.local_lookup(name, Bool)
+                else:
+                    raise Exception(f"{loc}: undefined variable: {name}")
+            case ast.BinaryOp(left=left, op=op, right=right, type=type):
                 if op == "=":
                     if not (isinstance(left, ast.BinaryOp) and left.op == "="):
                         if not isinstance(left, ast.Identifier):
                             raise Exception(f"{loc}: Left side of assignment must be a variable")
-                        var_left = st.lookup(left.name)
+                        var_left = st.local_lookup(left.name, right.type)
+                        if var_left is None:
+                            raise Exception(f"{loc}: Undefined variable: {left.name} or assigning wrong type {right.type}")
                         var_right = visit(st, right)
                         ins.append(ir.Copy(loc, var_right, var_left))
                         return var_left
                     else:
                         var_right = visit(st, right)
-                        ins.append(ir.Copy(loc, var_right, st.lookup(left.right.name)))
+                        t = Unit
+                        if isinstance(type, IntType):
+                            t = Int
+                        elif isinstance(type, BoolType):
+                            t = Bool
+                        ins.append(ir.Copy(loc, var_right, st.lookup(left.right.name, t)))
                         var_left = visit(st, left)
                         return var_left
                 elif op in {"and", "or"}:
@@ -84,7 +99,7 @@ def generate_ir(root_types: dict[ir.IRVar, Type], root_expr: ast.Expression) -> 
                         ins.append(ir.CondJump(loc, var_left, l_right, l_skip))
                     ins.append(l_skip)
                     var_right = visit(st, right)
-                    extra_var = new_var(Bool)
+                    extra_var, st = new_var(Bool, st)
                     ins.append(ir.Copy(loc, var_right, extra_var))
                     ins.append(ir.Jump(loc, l_end))
                     ins.append(l_right)
@@ -96,13 +111,18 @@ def generate_ir(root_types: dict[ir.IRVar, Type], root_expr: ast.Expression) -> 
                     ins.append(l_end)
                     return extra_var
                 else:
-                    var_op = st.lookup(op)
+                    t = Unit
+                    if isinstance(type, IntType):
+                        t = Int
+                    elif isinstance(type, BoolType):
+                        t = Bool
+                    var_op = st.lookup(op, t)
                     var_left = visit(st, left)
                     var_right = visit(st, right)
-                    var_result = new_var(expr.type)
+                    var_result, st = new_var(t, st)
                     ins.append(ir.Call(loc, var_op, [var_left, var_right], var_result))
                     return var_result
-            case ast.IfExpr(condition=condition, then_expr=then_expr, else_expr=else_expr):
+            case ast.IfExpr(condition=condition, then_expr=then_expr, else_expr=else_expr, type=type):
                 if else_expr is not None:
                     l_then = new_label(loc)
                     l_else = new_label(loc)
@@ -110,7 +130,12 @@ def generate_ir(root_types: dict[ir.IRVar, Type], root_expr: ast.Expression) -> 
                     var_cond = visit(st, condition)
                     ins.append(ir.CondJump(loc, var_cond, l_then, l_else))
                     ins.append(l_then)
-                    var_result = new_var(expr.type)
+                    t = Unit
+                    if isinstance(type, IntType):
+                        t = Int
+                    elif isinstance(type, BoolType):
+                        t = Bool
+                    var_result, st = new_var(t, st)
                     var_then = visit(st, then_expr)
                     ins.append(ir.Copy(loc, var_then, var_result))
                     ins.append(ir.Jump(loc, l_end))
@@ -132,39 +157,49 @@ def generate_ir(root_types: dict[ir.IRVar, Type], root_expr: ast.Expression) -> 
             case ast.Call(function=function, arguments=arguments):
                 var_func = ir.IRVar(function)
                 var_args = [visit(st, arg) for arg in arguments]
-                var_result = new_var(expr.type)
+                var_result, st = new_var(Unit, st)
                 ins.append(ir.Call(loc, var_func, var_args, var_result))
                 return var_result
             case ast.Block(statements=statements, result_expr=result_expr):
+                block_sym_tab = SymTab({}, st)
                 if result_expr is not None:
                     for i in range(len(statements) - 1):
-                        visit(st, statements[i])
+                        visit(block_sym_tab, statements[i])
                     if final_expression:
                         return var_unit
                     else:
-                        var_result = visit(st, result_expr)
+                        var_result = visit(block_sym_tab, result_expr)
                         return var_result
                 else:
                     for stmt in statements:
-                        visit(st, stmt)
-                        return var_unit
+                        visit(block_sym_tab, stmt)
+                    return var_unit
             case ast.UnaryOp(op=op, expr=expr):
                 if op == "-":
                     neg = "unary_-"
-                    var_op = st.lookup(neg)
+                    type = Int
+                    var_op = st.lookup(neg, type)
                 else:
                     neg = "unary_not"
-                    var_op = st.lookup(neg)
+                    type = Bool
+                    var_op = st.lookup(neg, type)
                 var_operand = visit(st, expr)
-                var_result = new_var(expr.type)
+                var_result, st = new_var(type, st)
                 ins.append(ir.Call(loc, var_op, [var_operand], var_result))
                 return var_result
-            case ast.VarDecl(name=name, initializer=initializer):
-                var_value = visit(st, initializer)
-                var_decl = new_var(expr.type)
-                st.locals[name] = var_decl
-                ins.append(ir.Copy(loc, var_value, var_decl))
-                return var_unit
+            case ast.VarDecl(name=name, initializer=initializer, type=type):
+                t = Unit
+                if isinstance(type, IntType):
+                    t = Int
+                elif isinstance(type, BoolType):
+                    t = Bool
+                if st.local_lookup(name, t) is None:
+                    var_value = visit(st, initializer)
+                    var_decl, st = new_var(type, st, name)
+                    ins.append(ir.Copy(loc, var_value, var_decl))
+                    return var_unit
+                else:
+                    raise Exception(f"{loc}: Variable {name} already declared in this scope")
             case ast.While(condition=condition, statements=statements):
                 l_cond = new_label(loc)
                 l_body = new_label(loc)
@@ -185,9 +220,9 @@ def generate_ir(root_types: dict[ir.IRVar, Type], root_expr: ast.Expression) -> 
                     if isinstance(statements[-1], ast.Block):
                         visit(st, statements[-1], True)
                     if result.function == "print_var":
-                        if isinstance(root_types[ir.IRVar(result.arguments[0].name)], IntType):
+                        if st.lookup(result.arguments[0].name, Int):
                             visit(st, ast.Call(location, "print_int", result.arguments), True)
-                        elif isinstance(root_types[ir.IRVar(result.arguments[0].name)], BoolType):
+                        elif st.lookup(result.arguments[0].name, Bool):
                             visit(st, ast.Call(location, "print_bool", result.arguments), True)
                     else:
                         visit(st, result, True)
@@ -196,83 +231,38 @@ def generate_ir(root_types: dict[ir.IRVar, Type], root_expr: ast.Expression) -> 
                         visit(st, stmt)
                 return var_unit
             case _:
-                raise Exception(f"{loc}: Unknown AST node type: {type(ast)}")
+                raise Exception(f"{loc}: Unknown AST node type: {ast}")
 
-    root_sym_tab = SymTab(locals={})
-    for v in root_types.keys():
-        root_sym_tab.locals[v.name] = v
-    var_final_result = visit(root_sym_tab, root_expr)
+    new_sym_tab = SymTab({}, root_table)
+    visit(new_sym_tab, root_expr)
     return ins
 
 
-def extract_identifiers(node: ast.Expression, symTab: SymTab) -> SymTab:
-    """ Recursively extracts all identifier names from the AST and adds them to symTab with type Int. """
-    match node:
-        case ast.VarDecl(name=name, initializer=initializer):
-            if name not in symTab.locals:
-                if isinstance(node.type, IntType):
-                    symTab.locals[ir.IRVar(name)] = Int
-                    return symTab
-                elif isinstance(node.type, BoolType):
-                    symTab.locals[ir.IRVar(name)] = Bool
-                    return symTab
-                else:
-                    symTab.locals[ir.IRVar(name)] = symTab.locals[ir.IRVar(initializer.name)]
-                    return symTab
-        case ast.IfExpr(condition=condition, then_expr=then_expr, else_expr=else_expr):
-            symTab = extract_identifiers(then_expr, symTab)
-            if else_expr is not None:
-                symTab = extract_identifiers(else_expr, symTab)
-            return symTab
-        case ast.Call(function=function, arguments=arguments):
-            for stmt in arguments:
-                symTab = extract_identifiers(stmt, symTab)
-            return symTab
-        case ast.Block(statements=statements, result_expr=result_expr):
-            for stmt in statements:
-                symTab = extract_identifiers(stmt, symTab)
-            return symTab
-        case ast.Program(statements=statements):
-            for stmt in statements:
-                symTab = extract_identifiers(stmt, symTab)
-            return symTab
-        case ast.While(condition=condition, statements=statements):
-            for stmt in statements:
-                symTab = extract_identifiers(stmt, symTab)
-            return symTab
-        case _:
-            return symTab
-
-
-GLOBAL_SYMTAB = SymTab({ir.IRVar("+"): Int,
-                        ir.IRVar("-"): Int,
-                        ir.IRVar("*"): Int,
-                        ir.IRVar("/"): Int,
-                        ir.IRVar("%"): Int,
-                        ir.IRVar("<"): Bool,
-                        ir.IRVar("<="): Bool,
-                        ir.IRVar("=="): Bool,
-                        ir.IRVar(">="): Bool,
-                        ir.IRVar(">"): Bool,
-                        ir.IRVar("!="): Bool,
-                        ir.IRVar("unary_-"): Int,
-                        ir.IRVar("unary_not"): Bool,
-                        ir.IRVar("print_int"): Int,
-                        ir.IRVar("print_bool"): Bool,
-                        ir.IRVar("read_int"): Unit,
+GLOBAL_SYMTAB = SymTab({("+", Int): ir.IRVar("+"),
+                        ("-", Int): ir.IRVar("-"),
+                        ("*", Int): ir.IRVar("*"),
+                        ("/", Int): ir.IRVar("/"),
+                        ("%", Int): ir.IRVar("%"),
+                        ("<", Bool): ir.IRVar("<"),
+                        ("<=", Bool): ir.IRVar("<="),
+                        ("==", Bool): ir.IRVar("=="),
+                        (">=", Bool): ir.IRVar(">="),
+                        (">", Bool): ir.IRVar(">"),
+                        ("!=", Bool): ir.IRVar("!="),
+                        ("unary_-", Int): ir.IRVar("unary_-"),
+                        ("unary_not", Bool): ir.IRVar("unary_not"),
+                        ("print_int", Unit): ir.IRVar("print_int"),
+                        ("print_bool", Unit): ir.IRVar("print_bool"),
+                        ("read_int", Unit): ir.IRVar("read_int"),
                         })
 
-root_types = SymTab({}, GLOBAL_SYMTAB)
-
-string = """var i = 1;
-var s = 0;
-while i <= 5 do {
-    s = s + i;
-    i = i + 1;
-}
-s"""
-tokens = parser(string)
-sym_tab = extract_identifiers(tokens, GLOBAL_SYMTAB)
-ir_lines = generate_ir(sym_tab.locals, tokens)
-for line in ir_lines:
-    print(line)
+#string = """var x = 3;
+#{
+#    var x = 4;
+#    x = 5;
+#}
+#x"""
+#tokens = parser(string)
+#ir_lines = generate_ir(GLOBAL_SYMTAB, tokens)
+#for line in ir_lines:
+#    print(line)

@@ -2,30 +2,30 @@ from dataclasses import dataclass
 from typing import List
 
 
-@dataclass
+@dataclass(frozen=True)
 class Type:
     """Basic type for types"""
 
 
-@dataclass
+@dataclass(frozen=True)
 class IntType(Type):
     def __repr__(self):
         return "Int"
 
 
-@dataclass
+@dataclass(frozen=True)
 class BoolType(Type):
     def __repr__(self):
         return "Bool"
 
 
-@dataclass
+@dataclass(frozen=True)
 class UnitType(Type):
     def __repr__(self):
         return "Unit"
 
 
-@dataclass
+@dataclass(frozen=True)
 class FunType(Type):
     param_types: List[Type]
     return_type: Type

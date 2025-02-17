@@ -1,6 +1,6 @@
 from tokenizer import Token, tokenize, Location
 import astree as ast
-from datatypes import IntType, UnitType, BoolType
+from datatypes import IntType, BoolType, UnitType
 
 
 def parse(tokens: list[Token]) -> ast.Expression:
@@ -53,6 +53,8 @@ def parse(tokens: list[Token]) -> ast.Expression:
     def parse_if_expression() -> ast.Expression:
         token = consume("if")
         condition = parse_expression()
+        if not isinstance(condition.type, BoolType):
+            raise Exception(f"{token.location}: expected a boolean type for if condition, got {condition.type}")
         consume("then")
         then_expr = parse_expression()
         else_expr = None
@@ -79,22 +81,32 @@ def parse(tokens: list[Token]) -> ast.Expression:
             elif op in {"or"} and precedence < 2:
                 token = consume("or")
                 right = parse_expression(2)
+                if not isinstance(left.type, BoolType) or not isinstance(right.type, BoolType):
+                    raise Exception(f"{token.location}: 'or' requires two Bools, got {left.type} and {right.type}")
                 left = ast.BinaryOp(token.location, left, op, right, type=BoolType())
             elif op in {"and"} and precedence < 3:
                 token = consume("and")
                 right = parse_expression(3)
+                if not isinstance(left.type, BoolType) or not isinstance(right.type, BoolType):
+                    raise Exception(f"{token.location}: 'and' requires two Bools, got {left.type} and {right.type}")
                 left = ast.BinaryOp(token.location, left, op, right, type=BoolType())
             elif op in {"==", "!=", "<", "<=", ">", ">="} and precedence < 4:
                 token = consume(op)
                 right = parse_expression(4)
-                left = ast.BinaryOp(token.location, left, op, right, type=BoolType())
+                if not isinstance(left.type, IntType) or not isinstance(right.type, IntType):
+                    raise Exception(f"{token.location}: '{op}' requires two Ints, got {left.type} and {right.type}")
+                left = ast.BinaryOp(token.location, left, op, right, type=IntType())
             elif op in {"+", "-"} and precedence < 5:
                 token = consume(op)
                 right = parse_expression(5)
+                if not isinstance(left.type, IntType) or not isinstance(right.type, IntType):
+                    raise Exception(f"{token.location}: '{op}' requires two Ints, got {left.type} and {right.type}")
                 left = ast.BinaryOp(token.location, left, op, right, type=IntType())
             elif op in {"*", "/", "%"} and precedence < 6:
                 token = consume(op)
                 right = parse_expression(6)
+                if not isinstance(left.type, IntType) or not isinstance(right.type, IntType):
+                    raise Exception(f"{token.location}: '{op}' requires two Ints, got {left.type} and {right.type}")
                 left = ast.BinaryOp(token.location, left, op, right, type=IntType())
             else:
                 break
@@ -126,6 +138,8 @@ def parse(tokens: list[Token]) -> ast.Expression:
     def parse_while() -> ast.While:
         token = consume("while")
         condition = parse_expression()
+        if not isinstance(condition.type, BoolType):
+            raise Exception(f"{token.location}: expected a boolean for while condition, got {condition.type}")
         consume("do")
         consume("{")
         statements = []
@@ -288,15 +302,4 @@ def parser(code: str) -> ast.Expression:
     return parse(tokens)
 
 
-print(parser("""var x = 0;
-while x < 5 do {
-    var y = x;
-
-    while y > 0 do {
-        y = y - 1;
-        print_int(y);
-    };
-    x = x + 1;
-    print_int(x);
-};
-print_int(x);"""))
+#print(parser("""2 + 2;"""))
