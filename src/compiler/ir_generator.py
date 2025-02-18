@@ -233,6 +233,9 @@ def generate_ir(root_table: SymTab, root_expr: ast.Expression) -> list[ir.Instru
                         if isinstance(arguments[i], ast.Identifier):
                             if st.lookup(arguments[i].name, Int) is None:
                                 raise Exception(f"{loc}: {function} takes only int as argument")
+                        elif isinstance(arguments[i], ast.Call):
+                            if arguments[i].function != "read_int":
+                                raise Exception(f"{loc}: {function} takes only int as argument")
                         else:
                             if not isinstance(arguments[i].type, IntType):
                                 raise Exception(f"{loc}: {function} takes only int as argument")
@@ -273,11 +276,17 @@ def generate_ir(root_table: SymTab, root_expr: ast.Expression) -> list[ir.Instru
                 var_operand = visit(st, expr)
                 var_result, st = new_var(type, st)
                 if str(var_op) == "unary_not":
-                    if st.lookup(str(var_operand), Bool) is None:
+                    if isinstance(expr, ast.Identifier):
+                        if st.lookup(expr.name, Bool) is None:
+                            raise Exception(f"{loc}: {var_operand} requires bool")
+                    elif st.lookup(str(var_operand), Bool) is None:
                         raise Exception(f"{loc}: {var_operand} requires bool")
                 elif str(var_op) == "unary_-":
-                    if st.lookup(str(var_operand), Int) is None:
-                        raise Exception(f"{loc}: {var_operand} requires int")
+                    if isinstance(expr, ast.Identifier):
+                        if st.lookup(expr.name, Int) is None:
+                            raise Exception(f"{loc}: {var_op} requires int")
+                    elif st.lookup(str(var_operand), Int) is None:
+                        raise Exception(f"{loc}: {var_op} requires int")
                 ins.append(ir.Call(loc, var_op, [var_operand], var_result))
                 return var_result
             case ast.VarDecl(name=name, initializer=initializer, type=type):
@@ -373,9 +382,7 @@ GLOBAL_SYMTAB = SymTab({("+", Int): ir.IRVar("+"),
                         })
 
 string = """var x = 3;
-var y = 4;
-x = y;
-x"""
+-x"""
 tokens = parser(string)
 ir_lines = generate_ir(GLOBAL_SYMTAB, tokens)
 for line in ir_lines:
