@@ -46,7 +46,7 @@ def generate_ir(root_table: SymTab, root_expr: ast.Expression) -> list[ir.Instru
         label_counter += 1
         return label_name
 
-    def visit(st: SymTab, expr: ast.Expression, final_expression: bool = False) -> ir.IRVar:
+    def visit(st: SymTab, expr: ast.Expression, final_expression: bool = False) -> ir.IRVar | SymTab:
         loc = expr.location
         match expr:
             case ast.Literal(value=value):
@@ -213,7 +213,7 @@ def generate_ir(root_table: SymTab, root_expr: ast.Expression) -> list[ir.Instru
                     for i in range(len(statements) - 1):
                         visit(block_sym_tab, statements[i])
                     if final_expression:
-                        return var_unit
+                        return block_sym_tab
                     else:
                         var_result = visit(block_sym_tab, result_expr)
                         return var_result
@@ -238,7 +238,17 @@ def generate_ir(root_table: SymTab, root_expr: ast.Expression) -> list[ir.Instru
                 return var_result
             case ast.VarDecl(name=name, initializer=initializer, type=type):
                 t = Unit
-                if isinstance(type, IntType):
+                if isinstance(initializer, ast.Block):
+                    if initializer.result_expr is not None:
+                        if isinstance(initializer.result_expr.type, IntType):
+                            t = Int
+                        elif isinstance(initializer.result_expr.type, BoolType):
+                            t = Bool
+                        else:
+                            raise Exception("ERROR HERE")
+                    else:
+                        raise Exception(f"{loc}: Block needs a result expression to be equal to variable")
+                elif isinstance(type, IntType):
                     t = Int
                 elif isinstance(type, BoolType):
                     t = Bool
@@ -271,9 +281,15 @@ def generate_ir(root_table: SymTab, root_expr: ast.Expression) -> list[ir.Instru
                 if result is not None:
                     for i in range(len(statements) - 1):
                         visit(st, statements[i])
+                    block_st = None
                     if isinstance(statements[-1], ast.Block):
-                        visit(st, statements[-1], True)
-                    if result.function == "print_var":
+                        block_st = visit(st, statements[-1], True)
+                    if block_st is not None and result.function == "print_var":
+                        if block_st.local_lookup(result.arguments[0].name, Int) is not None:
+                            visit(block_st, ast.Call(location, "print_int", result.arguments), True)
+                        elif block_st.local_lookup(result.arguments[0].name, Bool) is not None:
+                            visit(block_st, ast.Call(location, "print_bool", result.arguments), True)
+                    elif result.function == "print_var":
                         if st.local_lookup(result.arguments[0].name, Int) is not None:
                             visit(st, ast.Call(location, "print_int", result.arguments), True)
                         elif st.local_lookup(result.arguments[0].name, Bool) is not None:
@@ -310,15 +326,9 @@ GLOBAL_SYMTAB = SymTab({("+", Int): ir.IRVar("+"),
                         ("read_int", Unit): ir.IRVar("read_int"),
                         })
 
-#string = """var x = 3;
-#{
-#    x = 4;
-#    {
-#        x = 5;
-#    }
-#}
-#x"""
-#tokens = parser(string)
-#ir_lines = generate_ir(GLOBAL_SYMTAB, tokens)
-#for line in ir_lines:
-#    print(line)
+string = """var x = { { print_int(1) } { 2 } }
+x"""
+tokens = parser(string)
+ir_lines = generate_ir(GLOBAL_SYMTAB, tokens)
+for line in ir_lines:
+    print(line)
