@@ -229,13 +229,21 @@ def generate_ir(root_table: SymTab, root_expr: ast.Expression) -> list[ir.Instru
                 var_result, st = new_var(Unit, st)
                 ins.append(ir.Call(loc, var_func, var_args, var_result))
                 if function == "print_int":
-                    for arg in var_args:
-                        if st.lookup(str(arg), Int) is None:
-                            raise Exception(f"{loc}: {function} takes only int as argument")
-                if function == "print_bool":
-                    for arg in var_args:
-                        if st.lookup(str(arg), Bool) is None:
-                            raise Exception(f"{loc}: {function} takes only bool as argument")
+                    for i in range(len(arguments)):
+                        if isinstance(arguments[i], ast.Identifier):
+                            if st.lookup(arguments[i].name, Int) is None:
+                                raise Exception(f"{loc}: {function} takes only int as argument")
+                        else:
+                            if not isinstance(arguments[i].type, IntType):
+                                raise Exception(f"{loc}: {function} takes only int as argument")
+                elif function == "print_bool":
+                    for i in range(len(arguments)):
+                        if isinstance(arguments[i], ast.Identifier):
+                            if st.lookup(arguments[i].name, Bool) is None:
+                                raise Exception(f"{loc}: {function} takes only bool as argument")
+                        else:
+                            if not isinstance(arguments[i].type, BoolType):
+                                raise Exception(f"{loc}: {function} takes only bool as argument")
                 return var_result
             case ast.Block(statements=statements, result_expr=result_expr):
                 block_sym_tab = SymTab({}, st)
@@ -364,8 +372,11 @@ GLOBAL_SYMTAB = SymTab({("+", Int): ir.IRVar("+"),
                         ("read_int", Unit): ir.IRVar("read_int"),
                         })
 
-#string = """not (1 + 1)"""
-#tokens = parser(string)
-#ir_lines = generate_ir(GLOBAL_SYMTAB, tokens)
-#for line in ir_lines:
-#    print(line)
+string = """var x = 3;
+var y = 4;
+x = y;
+x"""
+tokens = parser(string)
+ir_lines = generate_ir(GLOBAL_SYMTAB, tokens)
+for line in ir_lines:
+    print(line)
