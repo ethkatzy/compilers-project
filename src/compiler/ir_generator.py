@@ -412,11 +412,11 @@ GLOBAL_SYMTAB = SymTab({("+", Int): ir.IRVar("+"),
                         ("read_int", Unit): ir.IRVar("read_int"),
                         })
 
-string = """var x = 3;
-var y = 4;
-x = y;
-x"""
-tokens = parser(string)
-ir_lines = generate_ir(GLOBAL_SYMTAB, tokens)
-for line in ir_lines:
-    print(line)
+#string = """var x = 3;
+#var y = 4;
+#x = y;
+#x"""
+#tokens = parser(string)
+#ir_lines = generate_ir(GLOBAL_SYMTAB, tokens)
+#for line in ir_lines:
+#    print(line)
