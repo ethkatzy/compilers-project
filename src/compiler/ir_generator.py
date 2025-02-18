@@ -228,6 +228,14 @@ def generate_ir(root_table: SymTab, root_expr: ast.Expression) -> list[ir.Instru
                 var_args = [visit(st, arg) for arg in arguments]
                 var_result, st = new_var(Unit, st)
                 ins.append(ir.Call(loc, var_func, var_args, var_result))
+                if function == "print_int":
+                    for arg in var_args:
+                        if st.lookup(str(arg), Int) is None:
+                            raise Exception(f"{loc}: {function} takes only int as argument")
+                if function == "print_bool":
+                    for arg in var_args:
+                        if st.lookup(str(arg), Bool) is None:
+                            raise Exception(f"{loc}: {function} takes only bool as argument")
                 return var_result
             case ast.Block(statements=statements, result_expr=result_expr):
                 block_sym_tab = SymTab({}, st)
@@ -256,6 +264,12 @@ def generate_ir(root_table: SymTab, root_expr: ast.Expression) -> list[ir.Instru
                     raise Exception(f"{loc}: Unknown operator {neg}")
                 var_operand = visit(st, expr)
                 var_result, st = new_var(type, st)
+                if str(var_op) == "unary_not":
+                    if st.lookup(str(var_operand), Bool) is None:
+                        raise Exception(f"{loc}: {var_operand} requires bool")
+                elif str(var_op) == "unary_-":
+                    if st.lookup(str(var_operand), Int) is None:
+                        raise Exception(f"{loc}: {var_operand} requires int")
                 ins.append(ir.Call(loc, var_op, [var_operand], var_result))
                 return var_result
             case ast.VarDecl(name=name, initializer=initializer, type=type):
@@ -350,8 +364,8 @@ GLOBAL_SYMTAB = SymTab({("+", Int): ir.IRVar("+"),
                         ("read_int", Unit): ir.IRVar("read_int"),
                         })
 
-string = """{ true; 1 + 2 } + 3"""
-tokens = parser(string)
-ir_lines = generate_ir(GLOBAL_SYMTAB, tokens)
-for line in ir_lines:
-    print(line)
+#string = """not (1 + 1)"""
+#tokens = parser(string)
+#ir_lines = generate_ir(GLOBAL_SYMTAB, tokens)
+#for line in ir_lines:
+#    print(line)

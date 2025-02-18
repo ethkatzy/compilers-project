@@ -160,7 +160,8 @@ def parse(tokens: list[Token]) -> ast.Expression:
         final_semi_colon = False if prev().text != ";" else True
         consume("}")
         result_expr = final_statement(statements[-1], False) if (not final_semi_colon and statements) else None
-        return ast.Block(token.location, statements, result_expr)
+        block_type = result_expr.type if result_expr is not None else UnitType
+        return ast.Block(token.location, statements, result_expr, type=block_type)
 
     def final_statement(stmt: ast.Expression, final_flag: bool) -> ast.Expression | None:
         loc = stmt.location
