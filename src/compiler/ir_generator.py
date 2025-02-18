@@ -1,6 +1,6 @@
 import ir
 import astree as ast
-from datatypes import Bool, Int, Type, Unit, IntType, BoolType
+from datatypes import Bool, Int, Type, Unit, IntType, BoolType, UnitType
 from tokenizer import Location
 from parser import parser
 from dataclasses import dataclass
@@ -74,13 +74,23 @@ def generate_ir(root_table: SymTab, root_expr: ast.Expression) -> list[ir.Instru
                     if not (isinstance(left, ast.BinaryOp) and left.op == "="):
                         if not isinstance(left, ast.Identifier):
                             raise Exception(f"{loc}: Left side of assignment must be a variable")
+                        t = Unit
+                        t2 = Unit
                         if st.lookup(left.name, Int) is not None:
-                                var_left = st.lookup(left.name, Int)
+                            var_left = st.lookup(left.name, Int)
+                            t = Int
                         elif st.lookup(left.name, Bool) is not None:
                             var_left = st.lookup(left.name, Bool)
+                            t = Bool
                         else:
                             raise Exception(f"{loc}: Unknown identifier {left.name}")
                         var_right = visit(st, right)
+                        if st.lookup(str(var_right), Int) is not None:
+                            t2 = Int
+                        elif st.lookup(str(var_right), Bool) is not None:
+                            t2 = Bool
+                        if t != t2:
+                            raise Exception(f"{loc}: assigning to {left.name} expects {t}, got {t2}")
                         ins.append(ir.Copy(loc, var_right, var_left))
                         return var_left
                     else:
@@ -302,11 +312,17 @@ def generate_ir(root_table: SymTab, root_expr: ast.Expression) -> list[ir.Instru
                         raise Exception(f"{loc}: Block needs a result expression to be equal to variable")
                 elif isinstance(initializer, ast.Call):
                     t = Int
+                    if type == UnitType:
+                        t2 = Int
                 elif isinstance(initializer, ast.Identifier):
                     if st.lookup(initializer.name, Int) is not None:
                         t = Int
+                        if type == UnitType:
+                            t2 = Int
                     elif st.lookup(initializer.name, Bool) is not None:
                         t = Bool
+                        if type == UnitType:
+                            t2 = Bool
                     else:
                         raise Exception(f"{loc}: unknown initializer {initializer.name}")
                 else:
@@ -319,7 +335,7 @@ def generate_ir(root_table: SymTab, root_expr: ast.Expression) -> list[ir.Instru
                 elif isinstance(type, IntType):
                     t2 = Int
                 if t != t2:
-                    raise Exception(f"{loc}: expected {t}, got {t2}")
+                    raise Exception(f"{loc}: expected {t2}, got {t}")
                 if st.local_lookup(name, t) is None:
                     var_value = visit(st, initializer)
                     var_decl, st = new_var(t, st, name)
@@ -389,9 +405,10 @@ GLOBAL_SYMTAB = SymTab({("+", Int): ir.IRVar("+"),
                         ("read_int", Unit): ir.IRVar("read_int"),
                         })
 
-string = """var x: Bool = 3;
-123"""
-tokens = parser(string)
-ir_lines = generate_ir(GLOBAL_SYMTAB, tokens)
-for line in ir_lines:
-    print(line)
+#string = """var a = true;
+#a = 3;
+#a"""
+#tokens = parser(string)
+#ir_lines = generate_ir(GLOBAL_SYMTAB, tokens)
+#for line in ir_lines:
+#    print(line)
