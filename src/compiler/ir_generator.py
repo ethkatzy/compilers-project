@@ -104,7 +104,17 @@ def generate_ir(root_table: SymTab, root_expr: ast.Expression) -> list[ir.Instru
                         ins.append(ir.CondJump(loc, var_left, l_right, l_skip))
                     ins.append(l_skip)
                     var_right = visit(st, right)
-                    if st.local_lookup(str(var_right), Bool) is None or st.local_lookup(str(var_left), Bool) is None:
+                    left_type = Unit
+                    right_type = Unit
+                    if isinstance(left, ast.Identifier) and st.local_lookup(left.name, Bool) is not None:
+                        left_type = Bool
+                    elif st.local_lookup(str(var_left), Bool) is not None:
+                        left_type = Bool
+                    if isinstance(right, ast.Identifier) and st.local_lookup(right.name, Bool) is not None:
+                        right_type = Bool
+                    elif st.local_lookup(str(var_right), Bool) is not None:
+                        right_type = Bool
+                    if not isinstance(left_type, BoolType) or not isinstance(right_type, BoolType):
                         raise Exception(f"{loc}: {op} requires two Bools ")
                     extra_var, st = new_var(Bool, st)
                     ins.append(ir.Copy(loc, var_right, extra_var))
@@ -128,20 +138,32 @@ def generate_ir(root_table: SymTab, root_expr: ast.Expression) -> list[ir.Instru
                     var_right = visit(st, right)
                     left_type = Unit
                     right_type = Unit
-                    if st.local_lookup(str(var_left), Int) is not None:
-                        left_type = Int
-                    elif st.local_lookup(str(var_left), Bool) is not None:
-                        left_type = Bool
-                    if st.local_lookup(str(var_right), Int) is not None:
-                        right_type = Int
-                    elif st.local_lookup(str(var_right), Bool) is not None:
-                        right_type = Bool
+                    if isinstance(left, ast.Identifier):
+                        if st.local_lookup(left.name, Int) is not None:
+                            left_type = Int
+                        elif st.local_lookup(left.name, Bool) is not None:
+                            left_type = Bool
+                    else:
+                        if st.local_lookup(str(var_left), Int) is not None:
+                            left_type = Int
+                        elif st.local_lookup(str(var_left), Bool) is not None:
+                            left_type = Bool
+                    if isinstance(right, ast.Identifier):
+                        if st.local_lookup(right.name, Int) is not None:
+                            right_type = Int
+                        elif st.local_lookup(right.name, Bool) is not None:
+                            right_type = Bool
+                    else:
+                        if st.local_lookup(str(var_right), Int) is not None:
+                            right_type = Int
+                        elif st.local_lookup(str(var_right), Bool) is not None:
+                            right_type = Bool
                     if op in {"==", "!="}:
                         if left_type != right_type:
                             raise Exception(f"{loc}: {op} requires two of the same type, got {left_type} and {right_type}")
                     elif op in {"+", "-", "*", "/", "%", "<", "<=", ">", ">="}:
                         if not isinstance(left_type, IntType) or not isinstance(right_type, IntType):
-                            raise Exception(f"{loc}: {op} requires two integers")
+                            raise Exception(f"{loc}: {op} requires two integers, got {left_type} and {right_type}")
                     var_result, st = new_var(t, st)
                     ins.append(ir.Call(loc, var_op, [var_left, var_right], var_result))
                     return var_result
@@ -263,7 +285,6 @@ def generate_ir(root_table: SymTab, root_expr: ast.Expression) -> list[ir.Instru
 
     new_sym_tab = SymTab({}, root_table)
     visit(new_sym_tab, root_expr)
-    print(new_sym_tab)
     return ins
 
 
@@ -285,7 +306,9 @@ GLOBAL_SYMTAB = SymTab({("+", Int): ir.IRVar("+"),
                         ("read_int", Unit): ir.IRVar("read_int"),
                         })
 
-#string = """true + 7"""
+#string = """var x = 1;
+#var y = x + 3;
+#y"""
 #tokens = parser(string)
 #ir_lines = generate_ir(GLOBAL_SYMTAB, tokens)
 #for line in ir_lines:
