@@ -35,6 +35,8 @@ def generate_ir(root_table: SymTab, root_expr: ast.Expression) -> list[ir.Instru
         var = ir.IRVar(f"x{counter}")
         if name is not None:
             st.locals[(name, t)] = var
+        else:
+            st.locals[(str(var), t)] = var
         counter += 1
         return var, st
 
@@ -53,7 +55,7 @@ def generate_ir(root_table: SymTab, root_expr: ast.Expression) -> list[ir.Instru
                         var, st = new_var(Bool, st)
                         ins.append(ir.LoadBoolConst(loc, value, var))
                     case int():
-                        var, st = new_var(Bool, st)
+                        var, st = new_var(Int, st)
                         ins.append(ir.LoadIntConst(loc, value, var))
                     case None:
                         var = var_unit
@@ -102,6 +104,8 @@ def generate_ir(root_table: SymTab, root_expr: ast.Expression) -> list[ir.Instru
                         ins.append(ir.CondJump(loc, var_left, l_right, l_skip))
                     ins.append(l_skip)
                     var_right = visit(st, right)
+                    if st.local_lookup(str(var_right), Bool) is None or st.local_lookup(str(var_left), Bool) is None:
+                        raise Exception(f"{loc}: {op} requires two Bools ")
                     extra_var, st = new_var(Bool, st)
                     ins.append(ir.Copy(loc, var_right, extra_var))
                     ins.append(ir.Jump(loc, l_end))
@@ -122,6 +126,22 @@ def generate_ir(root_table: SymTab, root_expr: ast.Expression) -> list[ir.Instru
                     var_op = st.lookup(op, t)
                     var_left = visit(st, left)
                     var_right = visit(st, right)
+                    left_type = Unit
+                    right_type = Unit
+                    if st.local_lookup(str(var_left), Int) is not None:
+                        left_type = Int
+                    elif st.local_lookup(str(var_left), Bool) is not None:
+                        left_type = Bool
+                    if st.local_lookup(str(var_right), Int) is not None:
+                        right_type = Int
+                    elif st.local_lookup(str(var_right), Bool) is not None:
+                        right_type = Bool
+                    if op in {"==", "!="}:
+                        if left_type != right_type:
+                            raise Exception(f"{loc}: {op} requires two of the same type, got {left_type} and {right_type}")
+                    elif op in {"+", "-", "*", "/", "%", "<", "<=", ">", ">="}:
+                        if not isinstance(left_type, IntType) or not isinstance(right_type, IntType):
+                            raise Exception(f"{loc}: {op} requires two integers")
                     var_result, st = new_var(t, st)
                     ins.append(ir.Call(loc, var_op, [var_left, var_right], var_result))
                     return var_result
@@ -243,6 +263,7 @@ def generate_ir(root_table: SymTab, root_expr: ast.Expression) -> list[ir.Instru
 
     new_sym_tab = SymTab({}, root_table)
     visit(new_sym_tab, root_expr)
+    print(new_sym_tab)
     return ins
 
 
@@ -264,10 +285,7 @@ GLOBAL_SYMTAB = SymTab({("+", Int): ir.IRVar("+"),
                         ("read_int", Unit): ir.IRVar("read_int"),
                         })
 
-#string = """var x = 3;
-#var y = x;
-#x = 4;
-#y"""
+#string = """true + 7"""
 #tokens = parser(string)
 #ir_lines = generate_ir(GLOBAL_SYMTAB, tokens)
 #for line in ir_lines:

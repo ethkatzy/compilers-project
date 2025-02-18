@@ -81,38 +81,26 @@ def parse(tokens: list[Token]) -> ast.Expression:
             elif op in {"or"} and precedence < 2:
                 token = consume("or")
                 right = parse_expression(2)
-                if not isinstance(left.type, BoolType) or not isinstance(right.type, BoolType):
-                    raise Exception(f"{token.location}: 'or' requires two Bools, got {left.type} and {right.type}")
                 left = ast.BinaryOp(token.location, left, op, right, type=BoolType())
             elif op in {"and"} and precedence < 3:
                 token = consume("and")
                 right = parse_expression(3)
-                if not isinstance(left.type, BoolType) or not isinstance(right.type, BoolType):
-                    raise Exception(f"{token.location}: 'and' requires two Bools, got {left.type} and {right.type}")
                 left = ast.BinaryOp(token.location, left, op, right, type=BoolType())
             elif op in {"==", "!="} and precedence < 4:
                 token = consume(op)
                 right = parse_expression(4)
-                if left.type != right.type:
-                    raise Exception(f"{token.location}: '{op}' requires two of the same type, got {left.type} and {right.type}")
                 left = ast.BinaryOp(token.location, left, op, right, type=BoolType())
             elif op in {"<", "<=", ">", ">="} and precedence < 4:
                 token = consume(op)
                 right = parse_expression(4)
-                if not isinstance(left.type, IntType) or not isinstance(right.type, IntType):
-                    raise Exception(f"{token.location}: '{op}' requires two Ints, got {left.type} and {right.type}")
                 left = ast.BinaryOp(token.location, left, op, right, type=BoolType())
             elif op in {"+", "-"} and precedence < 5:
                 token = consume(op)
                 right = parse_expression(5)
-                if not isinstance(left.type, IntType) or not isinstance(right.type, IntType):
-                    raise Exception(f"{token.location}: '{op}' requires two Ints, got {left.type} and {right.type}")
                 left = ast.BinaryOp(token.location, left, op, right, type=IntType())
             elif op in {"*", "/", "%"} and precedence < 6:
                 token = consume(op)
                 right = parse_expression(6)
-                if not isinstance(left.type, IntType) or not isinstance(right.type, IntType):
-                    raise Exception(f"{token.location}: '{op}' requires two Ints, got {left.type} and {right.type}")
                 left = ast.BinaryOp(token.location, left, op, right, type=IntType())
             else:
                 break
