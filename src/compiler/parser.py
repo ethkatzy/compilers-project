@@ -90,17 +90,17 @@ def parse(tokens: list[Token]) -> ast.Expression:
                 token = consume(op)
                 right = parse_expression(4)
                 left = ast.BinaryOp(token.location, left, op, right, type=BoolType())
-            elif op in {"<", "<=", ">", ">="} and precedence < 4:
-                token = consume(op)
-                right = parse_expression(4)
-                left = ast.BinaryOp(token.location, left, op, right, type=BoolType())
-            elif op in {"+", "-"} and precedence < 5:
+            elif op in {"<", "<=", ">", ">="} and precedence < 5:
                 token = consume(op)
                 right = parse_expression(5)
-                left = ast.BinaryOp(token.location, left, op, right, type=IntType())
-            elif op in {"*", "/", "%"} and precedence < 6:
+                left = ast.BinaryOp(token.location, left, op, right, type=BoolType())
+            elif op in {"+", "-"} and precedence < 6:
                 token = consume(op)
                 right = parse_expression(6)
+                left = ast.BinaryOp(token.location, left, op, right, type=IntType())
+            elif op in {"*", "/", "%"} and precedence < 7:
+                token = consume(op)
+                right = parse_expression(7)
                 left = ast.BinaryOp(token.location, left, op, right, type=IntType())
             else:
                 break
@@ -296,4 +296,4 @@ def parser(code: str) -> ast.Expression:
     return parse(tokens)
 
 
-#print(parser("""2 + 2;"""))
+#print(parser("""{ true; 1 + 2 } + 3"""))

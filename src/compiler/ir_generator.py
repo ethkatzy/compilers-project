@@ -106,16 +106,24 @@ def generate_ir(root_table: SymTab, root_expr: ast.Expression) -> list[ir.Instru
                     var_right = visit(st, right)
                     left_type = Unit
                     right_type = Unit
+                    if isinstance(left, ast.Block):
+                        left = left.result_expr
                     if isinstance(left, ast.Identifier) and st.local_lookup(left.name, Bool) is not None:
                         left_type = Bool
                     elif st.local_lookup(str(var_left), Bool) is not None:
                         left_type = Bool
+                    elif isinstance(left, ast.Literal) and isinstance(left.type, BoolType):
+                        left_type = Bool
+                    if isinstance(right, ast.Block):
+                        right = right.result_expr
                     if isinstance(right, ast.Identifier) and st.local_lookup(right.name, Bool) is not None:
                         right_type = Bool
                     elif st.local_lookup(str(var_right), Bool) is not None:
                         right_type = Bool
+                    elif isinstance(right, ast.Literal) and isinstance(right.type, BoolType):
+                        right_type = Bool
                     if not isinstance(left_type, BoolType) or not isinstance(right_type, BoolType):
-                        raise Exception(f"{loc}: {op} requires two Bools ")
+                        raise Exception(f"{loc}: {op} requires two Bools, got {left_type} and {right_type}")
                     extra_var, st = new_var(Bool, st)
                     ins.append(ir.Copy(loc, var_right, extra_var))
                     ins.append(ir.Jump(loc, l_end))
@@ -140,25 +148,39 @@ def generate_ir(root_table: SymTab, root_expr: ast.Expression) -> list[ir.Instru
                     var_right = visit(st, right)
                     left_type = Unit
                     right_type = Unit
-                    if isinstance(left, ast.Identifier):
-                        if st.local_lookup(left.name, Int) is not None:
+                    if isinstance(left, ast.Block):
+                        left = left.result_expr
+                    if isinstance(left, ast.BinaryOp):
+                        if isinstance(left.type, IntType):
                             left_type = Int
-                        elif st.local_lookup(left.name, Bool) is not None:
+                        elif isinstance(left.type, BoolType):
+                            left_type = Bool
+                    elif isinstance(left, ast.Identifier):
+                        if st.lookup(left.name, Int) is not None:
+                            left_type = Int
+                        elif st.lookup(left.name, Bool) is not None:
                             left_type = Bool
                     else:
-                        if st.local_lookup(str(var_left), Int) is not None:
+                        if st.lookup(str(var_left), Int) is not None:
                             left_type = Int
-                        elif st.local_lookup(str(var_left), Bool) is not None:
+                        elif st.lookup(str(var_left), Bool) is not None:
                             left_type = Bool
-                    if isinstance(right, ast.Identifier):
-                        if st.local_lookup(right.name, Int) is not None:
+                    if isinstance(right, ast.Block):
+                        right = right.result_expr
+                    if isinstance(right, ast.BinaryOp):
+                        if isinstance(right.type, IntType):
                             right_type = Int
-                        elif st.local_lookup(right.name, Bool) is not None:
+                        elif isinstance(right.type, BoolType):
+                            right_type = Bool
+                    elif isinstance(right, ast.Identifier):
+                        if st.lookup(right.name, Int) is not None:
+                            right_type = Int
+                        elif st.lookup(right.name, Bool) is not None:
                             right_type = Bool
                     else:
-                        if st.local_lookup(str(var_right), Int) is not None:
+                        if st.lookup(str(var_right), Int) is not None:
                             right_type = Int
-                        elif st.local_lookup(str(var_right), Bool) is not None:
+                        elif st.lookup(str(var_right), Bool) is not None:
                             right_type = Bool
                     if op in {"==", "!="}:
                         if left_type != right_type:
@@ -248,6 +270,8 @@ def generate_ir(root_table: SymTab, root_expr: ast.Expression) -> list[ir.Instru
                             raise Exception("ERROR HERE")
                     else:
                         raise Exception(f"{loc}: Block needs a result expression to be equal to variable")
+                elif isinstance(initializer, ast.Call):
+                    t = Int
                 elif isinstance(type, IntType):
                     t = Int
                 elif isinstance(type, BoolType):
@@ -326,8 +350,7 @@ GLOBAL_SYMTAB = SymTab({("+", Int): ir.IRVar("+"),
                         ("read_int", Unit): ir.IRVar("read_int"),
                         })
 
-string = """var x = { { print_int(1) } { 2 } }
-x"""
+string = """{ true; 1 + 2 } + 3"""
 tokens = parser(string)
 ir_lines = generate_ir(GLOBAL_SYMTAB, tokens)
 for line in ir_lines:
