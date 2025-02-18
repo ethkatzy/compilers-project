@@ -21,7 +21,7 @@ class SymTab:
         elif self.parent is not None:
             return self.parent.lookup(name, t)
         else:
-            raise NameError(f"Undefined symbol: {name}")
+            return None
 
 
 def generate_ir(root_table: SymTab, root_expr: ast.Expression) -> list[ir.Instruction]:
@@ -63,34 +63,34 @@ def generate_ir(root_table: SymTab, root_expr: ast.Expression) -> list[ir.Instru
                         raise Exception(f"{loc}: unsupported literal: {value}")
                 return var
             case ast.Identifier(name=name, type=type):
-                if st.local_lookup(name, Int) is not None:
-                    return st.local_lookup(name, Int)
-                elif st.local_lookup(name, Bool) is not None:
-                    return st.local_lookup(name, Bool)
+                if st.lookup(name, Int) is not None:
+                    return st.lookup(name, Int)
+                elif st.lookup(name, Bool) is not None:
+                    return st.lookup(name, Bool)
                 else:
-                    raise Exception(f"{loc}: undefined variable: {name}")
+                    raise Exception(f"{loc}: Unknown identifier {name}")
             case ast.BinaryOp(left=left, op=op, right=right, type=type):
                 if op == "=":
                     if not (isinstance(left, ast.BinaryOp) and left.op == "="):
                         if not isinstance(left, ast.Identifier):
                             raise Exception(f"{loc}: Left side of assignment must be a variable")
-                        if st.local_lookup(left.name, Int) is not None:
-                            var_left = st.local_lookup(left.name, Int)
-                        elif st.local_lookup(left.name, Bool) is not None:
-                            var_left = st.local_lookup(left.name, Bool)
+                        if st.lookup(left.name, Int) is not None:
+                                var_left = st.lookup(left.name, Int)
+                        elif st.lookup(left.name, Bool) is not None:
+                            var_left = st.lookup(left.name, Bool)
                         else:
-                            raise Exception(f"{loc}: Undefined variable: {left.name} or assigning wrong type {right.type}")
+                            raise Exception(f"{loc}: Unknown identifier {left.name}")
                         var_right = visit(st, right)
                         ins.append(ir.Copy(loc, var_right, var_left))
                         return var_left
                     else:
                         var_right = visit(st, right)
-                        t = Unit
-                        if isinstance(type, IntType):
-                            t = Int
-                        elif isinstance(type, BoolType):
-                            t = Bool
-                        ins.append(ir.Copy(loc, var_right, st.lookup(left.right.name, t)))
+                        if st.local_lookup(left.right.name, Int) is not None:
+                            ins.append(ir.Copy(loc, var_right, st.local_lookup(left.right.name, Int)))
+                        elif st.local_lookup(left.right.name, Bool) is not None:
+                            ins.append(ir.Copy(loc, var_right, st.local_lookup(left.right.name, Bool)))
+                        else:
+                            raise Exception(f"{loc}: Undefined variable: {left.right.name}")
                         var_left = visit(st, left)
                         return var_left
                 elif op in {"and", "or"}:
@@ -134,6 +134,8 @@ def generate_ir(root_table: SymTab, root_expr: ast.Expression) -> list[ir.Instru
                     elif isinstance(type, BoolType):
                         t = Bool
                     var_op = st.lookup(op, t)
+                    if var_op is None:
+                        raise Exception(f"{loc}: Unknown operator {op}")
                     var_left = visit(st, left)
                     var_right = visit(st, right)
                     left_type = Unit
@@ -228,6 +230,8 @@ def generate_ir(root_table: SymTab, root_expr: ast.Expression) -> list[ir.Instru
                     neg = "unary_not"
                     type = Bool
                     var_op = st.lookup(neg, type)
+                if var_op is None:
+                    raise Exception(f"{loc}: Unknown operator {neg}")
                 var_operand = visit(st, expr)
                 var_result, st = new_var(type, st)
                 ins.append(ir.Call(loc, var_op, [var_operand], var_result))
@@ -306,9 +310,14 @@ GLOBAL_SYMTAB = SymTab({("+", Int): ir.IRVar("+"),
                         ("read_int", Unit): ir.IRVar("read_int"),
                         })
 
-#string = """var x = 1;
-#var y = x + 3;
-#y"""
+#string = """var x = 3;
+#{
+#    x = 4;
+#    {
+#        x = 5;
+#    }
+#}
+#x"""
 #tokens = parser(string)
 #ir_lines = generate_ir(GLOBAL_SYMTAB, tokens)
 #for line in ir_lines:
