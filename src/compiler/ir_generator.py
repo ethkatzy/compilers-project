@@ -291,27 +291,35 @@ def generate_ir(root_table: SymTab, root_expr: ast.Expression) -> list[ir.Instru
                 return var_result
             case ast.VarDecl(name=name, initializer=initializer, type=type):
                 t = Unit
+                t2 = Unit
                 if isinstance(initializer, ast.Block):
                     if initializer.result_expr is not None:
                         if isinstance(initializer.result_expr.type, IntType):
                             t = Int
                         elif isinstance(initializer.result_expr.type, BoolType):
                             t = Bool
-                        else:
-                            raise Exception("ERROR HERE")
                     else:
                         raise Exception(f"{loc}: Block needs a result expression to be equal to variable")
                 elif isinstance(initializer, ast.Call):
                     t = Int
-                elif isinstance(type, IntType):
-                    t = Int
-                elif isinstance(type, BoolType):
-                    t = Bool
-                else:
-                    if st.local_lookup(initializer.name, Int) is not None:
+                elif isinstance(initializer, ast.Identifier):
+                    if st.lookup(initializer.name, Int) is not None:
                         t = Int
-                    elif st.local_lookup(initializer.name, Bool) is not None:
+                    elif st.lookup(initializer.name, Bool) is not None:
                         t = Bool
+                    else:
+                        raise Exception(f"{loc}: unknown initializer {initializer.name}")
+                else:
+                    if isinstance(initializer.type, IntType):
+                        t = Int
+                    elif isinstance(initializer.type, BoolType):
+                        t = Bool
+                if isinstance(type, BoolType):
+                    t2 = Bool
+                elif isinstance(type, IntType):
+                    t2 = Int
+                if t != t2:
+                    raise Exception(f"{loc}: expected {t}, got {t2}")
                 if st.local_lookup(name, t) is None:
                     var_value = visit(st, initializer)
                     var_decl, st = new_var(t, st, name)
@@ -381,8 +389,8 @@ GLOBAL_SYMTAB = SymTab({("+", Int): ir.IRVar("+"),
                         ("read_int", Unit): ir.IRVar("read_int"),
                         })
 
-string = """var x = 3;
--x"""
+string = """var x: Bool = 3;
+123"""
 tokens = parser(string)
 ir_lines = generate_ir(GLOBAL_SYMTAB, tokens)
 for line in ir_lines:

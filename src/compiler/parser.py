@@ -251,7 +251,7 @@ def parse(tokens: list[Token]) -> ast.Expression:
             consume("=")
             initializer = parse_expression()
             return ast.VarDecl(token.location, name, initializer, type=initializer.type)
-        elif peek().text in {"Int, Bool", "Unit"}:
+        elif peek().text in {"Int", "Bool", "Unit"}:
             datatype = peek().text
             consume(datatype)
             if peek().text != "=":
@@ -297,4 +297,5 @@ def parser(code: str) -> ast.Expression:
     return parse(tokens)
 
 
-#print(parser("""{ true; 1 + 2 } + 3"""))
+#print(parser("""var x: Int = 3;
+#x + 1"""))
