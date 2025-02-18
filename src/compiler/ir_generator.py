@@ -89,7 +89,14 @@ def generate_ir(root_table: SymTab, root_expr: ast.Expression) -> list[ir.Instru
                             t2 = Int
                         elif st.lookup(str(var_right), Bool) is not None:
                             t2 = Bool
+                        if isinstance(right, ast.Identifier):
+                            if st.lookup(right.name, Int) is not None:
+                                t2 = Int
+                            elif st.lookup(right.name, Bool) is not None:
+                                t2 = Bool
                         if t != t2:
+                            print(var_left, var_right)
+                            print(st)
                             raise Exception(f"{loc}: assigning to {left.name} expects {t}, got {t2}")
                         ins.append(ir.Copy(loc, var_right, var_left))
                         return var_left
@@ -405,10 +412,11 @@ GLOBAL_SYMTAB = SymTab({("+", Int): ir.IRVar("+"),
                         ("read_int", Unit): ir.IRVar("read_int"),
                         })
 
-#string = """var a = true;
-#a = 3;
-#a"""
-#tokens = parser(string)
-#ir_lines = generate_ir(GLOBAL_SYMTAB, tokens)
-#for line in ir_lines:
-#    print(line)
+string = """var x = 3;
+var y = 4;
+x = y;
+x"""
+tokens = parser(string)
+ir_lines = generate_ir(GLOBAL_SYMTAB, tokens)
+for line in ir_lines:
+    print(line)
