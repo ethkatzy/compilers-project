@@ -128,11 +128,3 @@ def interpret(node: ast.Expression, sym_tab: SymTab) -> Value:
             raise Exception(f"Unknown type: {type(node)}")
 
 
-parsed = parser("""
-var x = 0;
-while x < 3 do {
-x = x + 1;
-print_int(x)}
-""")
-global_sym_tab = SymTab({}, GLOBAL_SYMBOLS)
-print(interpret(parsed, global_sym_tab))

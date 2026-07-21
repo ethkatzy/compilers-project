@@ -13,9 +13,7 @@ python = "^3.12"
 autopep8 = "^2.3.1"
 mypy = "^1.13.0"
 pytest = "^8.3.3"
-
-[tool.poetry.scripts]
-main = "compiler.__main__:main"
+ruff = "^0.15.22"
 
 [build-system]
 requires = ["poetry-core"]
@@ -29,3 +27,10 @@ addopts = [
 
 [virtualenvs]
 prefer-active-python = true
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "W"]
