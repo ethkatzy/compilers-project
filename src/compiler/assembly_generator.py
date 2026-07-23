@@ -1,6 +1,6 @@
 import ir
 import dataclasses
-from instrinsics import all_intrinsics, IntrinsicArgs
+from intrinsics import all_intrinsics, IntrinsicArgs
 
 
 class Locals:
@@ -19,7 +19,7 @@ class Locals:
     def get_ref(self, v: ir.IRVar) -> str:
         """Returns an Assembly reference like `-24(%rbp)`
         for the memory location that stores the given variable"""
-        #print(self._var_to_location)
+        # print(self._var_to_location)
         return self._var_to_location[v]
 
     def stack_used(self) -> int:

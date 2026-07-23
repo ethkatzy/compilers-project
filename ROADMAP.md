@@ -20,18 +20,18 @@ Plan for turning this university compiler project into a public, CV-facing repo.
 
 | Item | Reasoning | Effort | Status |
 |---|---|---|---|
-| Empty out `src/compiler/__init__.py`'s leftover debug script | Ran a hardcoded demo at import time; currently crashes `poetry run main` because of the unqualified-import style. Not logic — just dead scratch code sitting in the package init. | Quick | Open |
+| Empty out `src/compiler/__init__.py`'s leftover debug script | Ran a hardcoded demo at import time. Removed; `__init__.py` now only inserts its own directory onto `sys.path` so the submodules' unqualified sibling imports (`from tokenizer import ...`) resolve when the package is imported normally (`import compiler`), not just when a file inside it is run directly (e.g. via PyCharm's "run"). Verified both ways work. | Quick | **Done** |
 | Remove `.test-gadget/` + `test-gadget.py` + `course.json` | Course-grading-submission infra; ~18MB of binaries, irrelevant to a public repo. Docker build already excludes `.test-gadget` via `.dockerignore`, confirming nothing else needs it. | Quick | **Done** |
 | Remove `__main__.py` + `compiler.sh` + `Dockerfile` + `pyproject.toml` scripts entry | `__main__.py`'s CLI/serve entry point isn't something you wrote and isn't the "product" being shown — see Decisions above. All three other files exist only to support it. | Quick | **Done** |
-| Stop tracking `.idea/` in git | PyCharm project files tracked in git — IDE-specific noise for a public repo. | Quick | Open |
-| Tighten `.gitignore` | Missing `.venv/`, `.idea/`, `.ruff_cache/`, `.pytest_cache/`, `.claude/settings.local.json`. | Quick | Open |
+| Stop tracking `.idea/` in git | PyCharm project files tracked in git — IDE-specific noise for a public repo. | Quick | **Done** |
+| Tighten `.gitignore` | Missing `.venv/`, `.idea/`, `.ruff_cache/`, `.pytest_cache/`, `.claude/settings.local.json`. | Quick | **Done** |
 | Replace stub tests (`tests/tokenizer_test.py` is a 2-line debug print, `tests/dummy_test.py` is a placeholder) | No real automated coverage exists yet. Could double as the home for an `assembler.py`-based "assemble and run" correctness check. | Medium | Open |
 | Remove dead module-level demo code in `interpreter.py` | Was a hardcoded `while`-loop demo running on import. | — | **Done** (removed by user directly) |
-| Decide on `instrinsics.py` → `intrinsics.py` rename | Genuine typo in a real, imported filename; fixing means updating every import site. Mechanical, not logic — needs explicit go-ahead since it touches `src/compiler/`. | Quick | Open |
-| `check.sh` deletes `test_programs/workdir`, but no `test_programs/` exists | Leftover from an unfinished golden-file/end-to-end test approach. Drop the line or build the tests it implies. | Quick | Open |
+| Decide on `instrinsics.py` → `intrinsics.py` rename | Genuine typo in a real, imported filename; fixing means updating every import site. Mechanical, not logic — needs explicit go-ahead since it touches `src/compiler/`. | Quick | **Done** |
+| `check.sh` deletes `test_programs/workdir`, but no `test_programs/` exists | Leftover from an unfinished golden-file/end-to-end test approach. Dropped the line; no such directory has existed for a while, so the golden-file test idea can be revisited separately if wanted. | Quick | **Done** |
 | Resolve mypy import-resolution gap | `mypy_path` alone can't fix it — `__init__.py` makes mypy see `compiler` as a real package, conflicting with the flat unqualified-import style used everywhere. Real fix: package-qualified imports throughout `src/compiler/`, or `--explicit-package-bases`. | Medium | Open |
-| Add a `LICENSE` file | No license currently exists. MIT is the common default for portfolio code. | Quick | Open |
-| `interpreter.py` and `type_checker.py` are orphaned | Neither is called from `__init__.py`'s pipeline or `__main__.py`. `type_checker.py` is actively developed (most of recent git history) but not yet wired in — not a deletion candidate, a gap to close or a decision to make about scope. | — | Noted, no action yet |
+| Add a `LICENSE` file | No license currently exists. MIT is the common default for portfolio code. | Quick | **Done** |
+| Remove orphaned `interpreter.py` and `type_checker.py` | Neither was imported anywhere. Re-checked the "actively developed" assumption via `git log -- <file>`: `type_checker.py` had a single commit (the original scaffold) — the many "type checking" bug-fix commits actually all touched `ir_generator.py`, where that logic lives instead. `interpreter.py` was a tree-walking interpreter that predates the IR/codegen pipeline. Both deleted. | Quick | **Done** |
 
 ---
 

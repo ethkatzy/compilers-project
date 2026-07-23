@@ -17,8 +17,8 @@ A hand-written Python compiler (no ANTLR/PLY/lark): lexer → recursive-descent 
 
 - `mypy.ini` sets `disallow_untyped_defs` and `disallow_untyped_calls` — all functions need full type hints, including on internal helpers, not just public APIs.
 - Modules use unqualified imports (e.g. `import astree as ast`, `from datatypes import Int, Bool`), not `from compiler.x import y`. This works because `pytest.ini_options` sets `pythonpath = "src"` and Poetry installs `compiler` such that its submodules resolve as top-level imports. Keep new modules consistent with this style rather than switching to package-qualified imports.
-- AST/token/type nodes are `@dataclass`. AST dispatch (e.g. in `type_checker.py`) uses `match`/`case` structural pattern matching over `astree` node types — follow this pattern when adding new node handling rather than isinstance chains.
-- `src/compiler/instrinsics.py` is misspelled (missing the "n") but is the real, in-use filename — don't "fix" the typo without updating every import site, and don't create a correctly-spelled duplicate.
+- AST/token/type nodes are `@dataclass`. AST dispatch (e.g. in `ir_generator.py`) uses `match`/`case` structural pattern matching over `astree` node types — follow this pattern when adding new node handling rather than isinstance chains.
+- `src/compiler/instrinsics.py`'s typo (missing the "n") has been fixed — it's now `intrinsics.py`, with all import sites updated to match.
 
 ## Cleanup in progress
 
