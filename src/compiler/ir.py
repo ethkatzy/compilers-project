@@ -1,6 +1,7 @@
 from dataclasses import dataclass, fields
-from tokenizer import Location
 from typing import Any
+
+from tokenizer import Location
 
 
 @dataclass(frozen=True)
@@ -78,4 +79,3 @@ class CondJump(Instruction):
     cond: IRVar
     then_label: Label | None
     else_label: Label | None
-    

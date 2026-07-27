@@ -17,8 +17,8 @@ class Token:
 
 def tokenize(source_code: str) -> list[Token]:
     token_pattern = re.compile(
-        r'\b[_a-zA-Z][_a-zA-Z0-9]*\b'  
-        r'|\b\d+\b'               
+        r'\b[_a-zA-Z][_a-zA-Z0-9]*\b'
+        r'|\b\d+\b'
         r'|==|!=|<=|>=|%|<|>|=|\+|\-|\*|/'
         r'|[(){}.,;]'
     )

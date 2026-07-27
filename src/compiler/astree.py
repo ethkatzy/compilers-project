@@ -1,13 +1,14 @@
 from dataclasses import dataclass, field
+
+from datatypes import Type, UnitType
 from tokenizer import Location
-from datatypes import Type, IntType, BoolType, UnitType
 
 
 @dataclass
 class Expression:
     """Base class for AST nodes representing expressions."""
     location: Location
-    type: Type = field(kw_only=True, default=UnitType)
+    type: Type = field(kw_only=True, default_factory=UnitType)
 
 
 @dataclass
@@ -34,7 +35,7 @@ class IfExpr(Expression):
     then_expr: Expression
     else_expr: Expression | None = None
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         if self.else_expr:
             return f"IfExpr(condition={self.condition}, then={self.then_expr}, else={self.else_expr})"
         else:

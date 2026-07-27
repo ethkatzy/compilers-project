@@ -1,12 +1,9 @@
+import shutil
 import subprocess
 import tempfile
-from contextlib import nullcontext
+from collections.abc import Callable
 from os import path
-from typing import Any, Callable, ContextManager, TypeVar
-import shutil
 from pathlib import Path
-
-T = TypeVar('T')
 
 
 def assemble(
@@ -52,7 +49,7 @@ def assemble_and_get_executable(
     )
 
 
-def _assemble(
+def _assemble[T](
         assembly_code: str,
         workdir: str | None,
         tempfile_basename: str,
@@ -68,7 +65,7 @@ def _assemble(
             return _assemble_impl(assembly_code, wd, tempfile_basename, link_with_c, extra_libraries, take_output)
 
 
-def _assemble_impl(
+def _assemble_impl[T](
         assembly_code: str,
         workdir: str,
         tempfile_basename: str,
@@ -256,7 +253,7 @@ print_bool:
     # rsi = pointer to message (already set above)
     # rdx = number of bytes (already set above)
     syscall
-    
+
     # Restore stack registers and return the original input
     movq %rbp, %rsp
     popq %rbp

@@ -1,6 +1,6 @@
-from tokenizer import Token, tokenize, Location
 import astree as ast
-from datatypes import IntType, BoolType, UnitType
+from datatypes import BoolType, IntType, UnitType
+from tokenizer import Location, Token, tokenize
 
 
 def parse(tokens: list[Token]) -> ast.Expression:
@@ -21,6 +21,12 @@ def parse(tokens: list[Token]) -> ast.Expression:
     def prev() -> Token:
         if pos != 0:
             return tokens[pos - 1]
+        else:
+            return Token(
+                location=tokens[0].location,
+                type="start",
+                text="",
+            )
 
     def consume(expected: str | list[str] | None = None) -> Token:
         nonlocal pos
@@ -29,7 +35,8 @@ def parse(tokens: list[Token]) -> ast.Expression:
             raise Exception(f"{token.location}: expected '{expected}'")
         if isinstance(expected, list) and token.text not in expected:
             comma_separated = ", ".join(f'"{e}"' for e in expected)
-            raise Exception(f"{token.location}: expected one of: '{comma_separated}'")
+            raise Exception(
+                f"{token.location}: expected one of: '{comma_separated}'")
         pos += 1
         return token
 
@@ -54,7 +61,8 @@ def parse(tokens: list[Token]) -> ast.Expression:
         token = consume("if")
         condition = parse_expression()
         if not isinstance(condition.type, BoolType):
-            raise Exception(f"{token.location}: expected a boolean type for if condition, got {condition.type}")
+            raise Exception(
+                f"{token.location}: expected a boolean type for if condition, got {condition.type}")
         consume("then")
         then_expr = parse_expression()
         else_expr = None
@@ -62,7 +70,9 @@ def parse(tokens: list[Token]) -> ast.Expression:
             consume("else")
             else_expr = parse_expression()
             if then_expr.type != else_expr.type:
-                raise Exception(f"{then_expr.location}: if-clause branches must have the same type, got {then_expr.type} and {else_expr.type}")
+                raise Exception(
+                    f"{then_expr.location}: if-clause branches must have the same type, "
+                    f"got {then_expr.type} and {else_expr.type}")
             return ast.IfExpr(token.location, condition, then_expr, else_expr, type=then_expr.type)
         else:
             return ast.IfExpr(token.location, condition, then_expr, else_expr)
@@ -81,27 +91,33 @@ def parse(tokens: list[Token]) -> ast.Expression:
             elif op in {"or"} and precedence < 2:
                 token = consume("or")
                 right = parse_expression(2)
-                left = ast.BinaryOp(token.location, left, op, right, type=BoolType())
+                left = ast.BinaryOp(token.location, left,
+                                    op, right, type=BoolType())
             elif op in {"and"} and precedence < 3:
                 token = consume("and")
                 right = parse_expression(3)
-                left = ast.BinaryOp(token.location, left, op, right, type=BoolType())
+                left = ast.BinaryOp(token.location, left,
+                                    op, right, type=BoolType())
             elif op in {"==", "!="} and precedence < 4:
                 token = consume(op)
                 right = parse_expression(4)
-                left = ast.BinaryOp(token.location, left, op, right, type=BoolType())
+                left = ast.BinaryOp(token.location, left,
+                                    op, right, type=BoolType())
             elif op in {"<", "<=", ">", ">="} and precedence < 5:
                 token = consume(op)
                 right = parse_expression(5)
-                left = ast.BinaryOp(token.location, left, op, right, type=BoolType())
+                left = ast.BinaryOp(token.location, left,
+                                    op, right, type=BoolType())
             elif op in {"+", "-"} and precedence < 6:
                 token = consume(op)
                 right = parse_expression(6)
-                left = ast.BinaryOp(token.location, left, op, right, type=IntType())
+                left = ast.BinaryOp(token.location, left,
+                                    op, right, type=IntType())
             elif op in {"*", "/", "%"} and precedence < 7:
                 token = consume(op)
                 right = parse_expression(7)
-                left = ast.BinaryOp(token.location, left, op, right, type=IntType())
+                left = ast.BinaryOp(token.location, left,
+                                    op, right, type=IntType())
             else:
                 break
         return left
@@ -127,13 +143,15 @@ def parse(tokens: list[Token]) -> ast.Expression:
                 return parse_function_call(identifier)
             return identifier
         else:
-            raise Exception(f"{peek().location}: expected '(', an integer literal or an identifier")
+            raise Exception(
+                f"{peek().location}: expected '(', an integer literal or an identifier")
 
     def parse_while() -> ast.While:
         token = consume("while")
         condition = parse_expression()
         if not isinstance(condition.type, BoolType):
-            raise Exception(f"{token.location}: expected a boolean for while condition, got {condition.type}")
+            raise Exception(
+                f"{token.location}: expected a boolean for while condition, got {condition.type}")
         consume("do")
         consume("{")
         statements = []
@@ -159,8 +177,9 @@ def parse(tokens: list[Token]) -> ast.Expression:
                 raise Exception(f"{peek().location}: expected ';' or '}}'")
         final_semi_colon = False if prev().text != ";" else True
         consume("}")
-        result_expr = final_statement(statements[-1], False) if (not final_semi_colon and statements) else None
-        block_type = result_expr.type if result_expr is not None else UnitType
+        result_expr = final_statement(
+            statements[-1], False) if (not final_semi_colon and statements) else None
+        block_type = result_expr.type if result_expr is not None else UnitType()
         return ast.Block(token.location, statements, result_expr, type=block_type)
 
     def final_statement(stmt: ast.Expression, final_flag: bool) -> ast.Expression | None:
@@ -190,6 +209,8 @@ def parse(tokens: list[Token]) -> ast.Expression:
                         return ast.Call(loc, "print_int", [stmt]) if final_flag else stmt
                     elif isinstance(type, BoolType):
                         return ast.Call(loc, "print_bool", [stmt]) if final_flag else stmt
+                    else:
+                        return None
             case ast.Call(function=function):
                 if function == "read_int":
                     return ast.Call(loc, "print_int", [stmt]) if final_flag else stmt
@@ -220,7 +241,8 @@ def parse(tokens: list[Token]) -> ast.Expression:
         elif op == "not":
             return ast.UnaryOp(token.location, op, expr, type=BoolType())
         else:
-            raise Exception(f"{peek().location}: Unknown unary operator, expected 'not' or '{op}'")
+            raise Exception(
+                f"{peek().location}: Unknown unary operator, expected 'not' or '{op}'")
 
     def parse_function_call(identifier: ast.Identifier) -> ast.Call:
         token = consume("(")
@@ -245,7 +267,8 @@ def parse(tokens: list[Token]) -> ast.Expression:
         """Parse a variable declaration: var x = expr"""
         token = consume("var")
         if peek().type != "identifier":
-            raise Exception(f"{peek().location}: expected an identifier after 'var'")
+            raise Exception(
+                f"{peek().location}: expected an identifier after 'var'")
         name = consume().text
         if peek().text == "=":
             consume("=")
@@ -255,7 +278,8 @@ def parse(tokens: list[Token]) -> ast.Expression:
             datatype = peek().text
             consume(datatype)
             if peek().text != "=":
-                raise Exception(f"{peek().location}: expected '=' after variable")
+                raise Exception(
+                    f"{peek().location}: expected '=' after variable")
             consume("=")
             initializer = parse_expression()
             if datatype == "Int":
@@ -265,7 +289,8 @@ def parse(tokens: list[Token]) -> ast.Expression:
             else:
                 return ast.VarDecl(token.location, name, initializer, type=UnitType())
         else:
-            raise Exception(f"{peek().location}: Expected data type or = after variable")
+            raise Exception(
+                f"{peek().location}: Expected data type or = after variable")
 
     def parse_program() -> ast.Program:
         expressions = []
@@ -287,7 +312,8 @@ def parse(tokens: list[Token]) -> ast.Expression:
 
     result = parse_program()
     if pos < len(tokens):
-        raise Exception(f"{tokens[pos].location}: Unexpected token '{tokens[pos].text}' at the end of input")
+        raise Exception(
+            f"{tokens[pos].location}: Unexpected token '{tokens[pos].text}' at the end of input")
 
     return result
 
@@ -297,5 +323,5 @@ def parser(code: str) -> ast.Expression:
     return parse(tokens)
 
 
-#print(parser("""var x: Int = 3;
-#x + 1"""))
+# print(parser("""var x: Int = 3;
+# x + 1"""))

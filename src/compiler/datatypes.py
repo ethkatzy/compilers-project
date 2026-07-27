@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import List
 
 
 @dataclass(frozen=True)
@@ -9,32 +8,32 @@ class Type:
 
 @dataclass(frozen=True)
 class IntType(Type):
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "Int"
 
 
 @dataclass(frozen=True)
 class BoolType(Type):
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "Bool"
 
 
 @dataclass(frozen=True)
 class UnitType(Type):
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "Unit"
 
 
 @dataclass(frozen=True)
 class FunType(Type):
-    param_types: List[Type]
+    param_types: list[Type]
     return_type: Type
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         param_str = ", ".join(map(str, self.param_types))
         return f"({param_str}) -> {self.return_type}"
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return (isinstance(other, FunType) and self.param_types == other.param_types
                 and self.return_type == other.return_type)
 

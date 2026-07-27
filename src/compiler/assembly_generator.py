@@ -1,6 +1,6 @@
+
 import ir
-import dataclasses
-from intrinsics import all_intrinsics, IntrinsicArgs
+from intrinsics import IntrinsicArgs, all_intrinsics
 
 
 class Locals:
@@ -26,7 +26,7 @@ class Locals:
         """Returns the number of bytes of stack space needed for the local variables."""
         return self._stack_used
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._var_to_location)
 
 
@@ -41,14 +41,14 @@ def get_all_ir_variables(instructions: list[ir.Instruction]) -> list[ir.IRVar]:
 
     for insn in instructions:
         match insn:
-            case ir.LoadBoolConst(value=value, dest=dest):
+            case ir.LoadBoolConst(dest=dest):
                 add(dest)
-            case ir.LoadIntConst(value=value, dest=dest):
+            case ir.LoadIntConst(dest=dest):
                 add(dest)
             case ir.Copy(source=source, dest=dest):
                 add(source)
                 add(dest)
-            case ir.Call(fun=fun, args=args, dest=dest):
+            case ir.Call(dest=dest):
                 add(dest)
             case _:
                 continue
