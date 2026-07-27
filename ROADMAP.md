@@ -52,28 +52,32 @@ Plan for turning this university compiler project into a public, CV-facing repo.
 
 ## Frontend (pipeline visualizer)
 
-Goal: input source → see tokens / AST / IR / assembly panels, like the lecturer's sandbox tool. Since `__main__.py` is going away, this now needs its own small backend rather than adapting `__main__.py`'s `serve` mode.
+**Done.** Goal: input source → see tokens / AST / IR / assembly panels, like the lecturer's sandbox tool. Built with no backend at all — runs the real pipeline client-side in the browser via Pyodide (CPython-in-WASM), superseding the originally-planned "small HTTP wrapper" (see Hosting/Deployment below, which is where that decision actually got made).
 
-- **Backend**: small HTTP wrapper (Flask or stdlib) calling `tokenize()`, `parse()`, `generate_ir()`, `generate_assembly()` individually per stage. Dataclasses already give free `repr()`; `ir.Instruction.__str__` already formats nicely (e.g. `LoadIntConst(3, x1)`).
-- **Frontend**: one static HTML page + vanilla JS + a textarea, four panels (Tokens, AST, IR, Assembly).
-- **Explicitly out of scope for v1**: executing the compiled binary and showing program output. That's `assembler.py`'s job now (internal check only) — not something to expose to arbitrary public input without real sandboxing.
+- `frontend/index.html` / `style.css` / `app.js` — a static page, vanilla JS, a source textarea, and four panels (Tokens, AST, IR, Assembly) in a responsive 2×2 grid that collapses to tabs on narrow viewports. Dark/light themed via `prefers-color-scheme`.
+- `frontend/py/webapi.py` — glue module (not compiler logic) loaded into Pyodide's virtual FS. Runs `tokenize()` → `parse()` → `generate_ir(GLOBAL_SYMTAB, ...)` → `generate_assembly()` stage by stage, catching each stage's exception independently, and serializes tokens/AST/IR/assembly to JSON for `app.js` to render. The IR panel is labeled "includes type checking" since that's genuinely where it happens (inline in `generate_ir`, not a separate pass).
+- `frontend/build.py` — assembles a deployable `_site/` from the frontend assets plus the 8 compiler modules the 4 exposed stages actually need (`tokenizer.py`, `datatypes.py`, `intrinsics.py`, `ir.py`, `astree.py`, `parser.py`, `ir_generator.py`, `assembly_generator.py`). `assembler.py` is deliberately excluded — it shells out to real `as`/`ld` and stays internal-only, per the out-of-scope decision below. Same script runs for local dev (`python frontend/build.py` + `python -m http.server` from `_site/`) and in CI, so there's no dev/prod path branching.
+- AST rendering walks `dataclasses.fields()` recursively into native `<details>/<summary>` elements — collapsible for free, no tree library needed.
+- Parser/IR-generator errors are plain `Exception(f"{loc}: message")` strings; `app.js` regexes out the `Location(line=.., column=..)` repr to show a cleaned-up message and a "Jump to location" button that moves the textarea cursor there.
+- **Explicitly out of scope for v1** (unchanged from the original plan): executing the compiled binary and showing program output. That's `assembler.py`'s job (internal check only) — not something to expose to arbitrary public input without real sandboxing.
 
-| Item | Effort |
+| Item | Status |
 |---|---|
-| HTTP backend exposing the 4 pipeline stages as JSON | Quick-Medium |
-| Static 4-panel frontend page | Quick-Medium |
-| Nice-looking AST tree rendering | Quick |
-| Visual polish for a CV-quality demo | Medium |
+| 4-stage pipeline glue (`webapi.py`), typed and ruff-clean | **Done** |
+| Static 4-panel frontend page, responsive grid/tabs, dark+light theme | **Done** |
+| Collapsible AST tree rendering | **Done** |
+| Per-stage error handling with click-to-locate in the source | **Done** |
+| Example-program dropdown (pulled from `tests/test_pipeline.py`'s golden programs) + localStorage persistence | **Done** |
 
 ---
 
 ## Hosting / Deployment
 
-`assembler.py` shells out to real `as`/`ld` and makes raw Linux x86-64 syscalls — that only runs on a real Linux x86-64 host, never in a browser. Since actually assembling/running is no longer part of the public-facing demo anyway (see Decisions), this stops being a hosting constraint at all.
+**Done — Pyodide + GitHub Pages, as recommended below, no backend built.** `assembler.py` shells out to real `as`/`ld` and makes raw Linux x86-64 syscalls — that only runs on a real Linux x86-64 host, never in a browser. Since actually assembling/running was never part of the public-facing demo (see Decisions and Frontend above), this was never a hosting constraint.
 
-**Recommended: Pyodide (CPython-in-WASM) + GitHub Pages.** Tokenizing, parsing, IR generation, and assembly-text generation are all pure Python with no subprocess/syscalls — Pyodide can run this entirely client-side, for free, with zero backend to maintain or secure. This exactly matches the "show the translation pipeline" goal.
+Tokenizing, parsing, IR generation, and assembly-text generation are all pure Python with no subprocess/syscalls (confirmed by checking every `import` line in `src/compiler/`), so Pyodide runs the pipeline entirely client-side, for free, with zero backend to maintain or secure.
 
-- Depends on the `__init__.py` cleanup above (package must be cleanly importable before it can be loaded into Pyodide).
-- Effort: **Medium** (mounting the package into Pyodide's virtual FS, wiring calls, marshalling results back to JS).
+- `.github/workflows/deploy-pages.yml` runs `frontend/build.py` then publishes `_site/` via `actions/upload-pages-artifact` + `actions/deploy-pages` on every push to `main` that touches `frontend/` or `src/compiler/`.
+- **Still open:** enabling Pages itself is a one-time manual step — repo Settings → Pages → Source = GitHub Actions. Not something that can be done from a commit.
 
-No backend hosting (Fly.io/Render/a VPS) is needed under this plan, since binary execution isn't part of what's being shown publicly.
+No backend hosting (Fly.io/Render/a VPS) was needed, since binary execution isn't part of what's shown publicly.

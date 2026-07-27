@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Compiler pipeline visualizer</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="toolbar">
+    <h1>Compiler pipeline visualizer</h1>
+    <select id="example-select"></select>
+    <button id="compile-btn" disabled>Compile</button>
+    <span id="status">Loading Python runtime&hellip;</span>
+  </header>
+
+  <main class="workspace">
+    <section class="source-pane">
+      <textarea id="source" spellcheck="false"></textarea>
+    </section>
+
+    <nav class="tabbar" aria-label="Pipeline stage">
+      <button type="button" class="tab" data-stage="tokens">Tokens</button>
+      <button type="button" class="tab" data-stage="ast">AST</button>
+      <button type="button" class="tab" data-stage="ir">IR</button>
+      <button type="button" class="tab" data-stage="assembly">Assembly</button>
+    </nav>
+
+    <section class="panels" data-active-stage="tokens">
+      <article class="panel" data-stage="tokens">
+        <h2>Tokens</h2>
+        <div class="panel-body"></div>
+      </article>
+      <article class="panel" data-stage="ast">
+        <h2>AST</h2>
+        <div class="panel-body"></div>
+      </article>
+      <article class="panel" data-stage="ir">
+        <h2>IR <span class="hint">(includes type checking)</span></h2>
+        <div class="panel-body"></div>
+      </article>
+      <article class="panel" data-stage="assembly">
+        <h2>Assembly</h2>
+        <div class="panel-body"></div>
+      </article>
+    </section>
+  </main>
+
+  <footer>
+    <p>
+      Shows the real compiler pipeline (tokenizer &rarr; parser &rarr; IR generator &rarr; assembly generator)
+      running client-side via Pyodide. Executing the generated assembly isn't shown here &mdash; see
+      <code>assembler.py</code> in the repo, which exists only as an internal correctness check.
+    </p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/pyodide/v314.0.3/full/pyodide.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
