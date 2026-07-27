@@ -58,6 +58,17 @@ body {
   white-space: nowrap;
 }
 
+.spec-link {
+  color: var(--accent);
+  font-size: 0.85rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.spec-link:hover {
+  text-decoration: underline;
+}
+
 .toolbar select,
 .toolbar button {
   font: inherit;

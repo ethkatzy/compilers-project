@@ -18,7 +18,7 @@ STATIC_FILES = ["index.html", "style.css", "app.js"]
 
 # The pipeline stages the visualizer exposes only need these modules.
 # assembler.py is deliberately excluded: it shells out to real `as`/`ld`
-# and isn't part of the public-facing demo (see ROADMAP.md).
+# and isn't part of the public-facing demo.
 COMPILER_MODULES = [
     "tokenizer.py",
     "datatypes.py",

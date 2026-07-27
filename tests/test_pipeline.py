@@ -10,6 +10,7 @@ from assembly_generator import generate_assembly
 from ir_generator import GLOBAL_SYMTAB, generate_ir
 from parser import parse
 from tokenizer import tokenize
+from type_checker import type_check
 
 
 @dataclass
@@ -20,7 +21,7 @@ class ProgramCase:
     stdin: str | None = None
 
 
-# Golden test programs covering the constructs documented in language_spec.html.
+# Golden test programs covering the constructs documented in language_spec.md.
 # Expected output for each was verified by actually assembling, linking, and
 # running the generated program (see PROGRAMS-derived tests below) — not just
 # hand-computed from the spec.
@@ -102,6 +103,7 @@ def test_compiles_to_assembly_without_error(case: ProgramCase) -> None:
     """
     tokens = tokenize(case.source)
     parsed = parse(tokens)
+    type_check(parsed)
     ir_lines = generate_ir(GLOBAL_SYMTAB, parsed)
     assembly = generate_assembly(ir_lines)
     assert assembly.strip() != ""
@@ -116,11 +118,12 @@ def test_program_produces_expected_output(case: ProgramCase) -> None:
     """End-to-end correctness check: assemble, link, and actually run the generated program.
 
     Uses assembler.py to invoke real `as`/`ld`, matching its documented role as an
-    internal correctness check (see CLAUDE.md/ROADMAP.md). Skipped on platforms
-    without a Linux assembler/linker on PATH, e.g. plain Windows without WSL.
+    internal correctness check (see CLAUDE.md). Skipped on platforms without a
+    Linux assembler/linker on PATH, e.g. plain Windows without WSL.
     """
     tokens = tokenize(case.source)
     parsed = parse(tokens)
+    type_check(parsed)
     ir_lines = generate_ir(GLOBAL_SYMTAB, parsed)
     assembly = generate_assembly(ir_lines)
 

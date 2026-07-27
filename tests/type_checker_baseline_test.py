@@ -15,7 +15,7 @@ class RejectCase:
 
 
 # Baseline for the ir/type-checker split: each case is a program that should be
-# statically rejected. `spec_basis` is the language_spec.html "Semantics" clause
+# statically rejected. `spec_basis` is the language_spec.md "Semantics" clause
 # (or, where noted, an implementation-defined static rule not literally in the
 # spec) that the program violates. `expected_message` is a regex matched against
 # the exception raised by generate_ir(), which now delegates its type checking
