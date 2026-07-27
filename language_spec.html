@@ -6,20 +6,6 @@
     <title>Language spec – 
       Compilers
     </title>
-    <link rel="stylesheet" href="/spring-2026/assets/css/fonts.css">
-    <link rel="stylesheet" href="/spring-2026/assets/css/style.css">
-    <script>
-      let activeTheme = localStorage.getItem("theme");
-      if (activeTheme === null) {
-        activeTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-      }
-      document.documentElement.classList.toggle(
-        "dark-theme",
-        activeTheme === "dark"
-      );
-      const hideOtherSectionMenus = 1;
-    </script>
-    <script src="/spring-2026/assets/js/navigation.js"></script>
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css" integrity="sha384-vKruj+a13U8yHIkAyGgK1J3ArTLzrFGBbBc0tDp4ad/EyewESeXE/Iv67Aj8gKZ0" crossorigin="anonymous">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.js" integrity="sha384-PwRUT/YqbnEjkZO0zZxNqcxACrXe+j766U2amXcgMg5457rve2Y7I6ZJSm2A0mS4" crossorigin="anonymous"></script>
@@ -30,9 +16,6 @@
     <div class="menu-background" id="menu-background"></div>
     <main>
       
-<script defer src="/spring-2026/assets/js/asides.js"></script>
-<script defer src="/spring-2026/assets/js/extra-highlights.js"></script>
-<script defer src="/spring-2026/assets/js/extra-nav.js"></script>
 <article data-url="/language-spec/">
     <h1 id="language-spec">Language spec</h1>
 
@@ -142,11 +125,9 @@ A compiler should produce a program that behaves the same way.</p>
 <ul>
   <li>a 64-bit signed integer (between -2<sup>63</sup> and 2<sup>63</sup> - 1)</li>
   <li>a boolean <code class="language-plaintext highlighter-rouge">true</code> or <code class="language-plaintext highlighter-rouge">false</code></li>
-  <li>a built-in function*</li>
+  <li>a built-in function</li>
   <li>the special value <code class="language-plaintext highlighter-rouge">unit</code>, which means ”no meaningful value”</li>
 </ul>
-
-<p>* You don’t need to support any use of function values other than calling them directly.</p>
 
 <p>A <strong>context</strong> consists of:</p>
 <ul>
