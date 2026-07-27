@@ -83,6 +83,11 @@ PROGRAMS = [
     ProgramCase("top_level_result_bool", "3 < 5", "true\n"),
     ProgramCase("read_int", "var n = read_int(); print_int(n + 1);",
                 "42\n", stdin="41\n"),
+    ProgramCase(
+        "trailing_block_result_references_block_local",
+        "{ var y = 5; y + 1 }",
+        "6\n",
+    ),
 ]
 
 HAS_LINUX_TOOLCHAIN = shutil.which(

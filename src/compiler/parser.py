@@ -60,19 +60,12 @@ def parse(tokens: list[Token]) -> ast.Expression:
     def parse_if_expression() -> ast.Expression:
         token = consume("if")
         condition = parse_expression()
-        if not isinstance(condition.type, BoolType):
-            raise Exception(
-                f"{token.location}: expected a boolean type for if condition, got {condition.type}")
         consume("then")
         then_expr = parse_expression()
         else_expr = None
         if peek().text == "else":
             consume("else")
             else_expr = parse_expression()
-            if then_expr.type != else_expr.type:
-                raise Exception(
-                    f"{then_expr.location}: if-clause branches must have the same type, "
-                    f"got {then_expr.type} and {else_expr.type}")
             return ast.IfExpr(token.location, condition, then_expr, else_expr, type=then_expr.type)
         else:
             return ast.IfExpr(token.location, condition, then_expr, else_expr)
@@ -149,9 +142,6 @@ def parse(tokens: list[Token]) -> ast.Expression:
     def parse_while() -> ast.While:
         token = consume("while")
         condition = parse_expression()
-        if not isinstance(condition.type, BoolType):
-            raise Exception(
-                f"{token.location}: expected a boolean for while condition, got {condition.type}")
         consume("do")
         consume("{")
         statements = []
@@ -274,7 +264,11 @@ def parse(tokens: list[Token]) -> ast.Expression:
             consume("=")
             initializer = parse_expression()
             return ast.VarDecl(token.location, name, initializer, type=initializer.type)
-        elif peek().text in {"Int", "Bool", "Unit"}:
+        elif peek().text == ":":
+            consume(":")
+            if peek().text not in {"Int", "Bool", "Unit"}:
+                raise Exception(
+                    f"{peek().location}: expected a type ('Int', 'Bool', or 'Unit') after ':'")
             datatype = peek().text
             consume(datatype)
             if peek().text != "=":
@@ -290,7 +284,7 @@ def parse(tokens: list[Token]) -> ast.Expression:
                 return ast.VarDecl(token.location, name, initializer, type=UnitType())
         else:
             raise Exception(
-                f"{peek().location}: Expected data type or = after variable")
+                f"{peek().location}: expected ':' or '=' after variable")
 
     def parse_program() -> ast.Program:
         expressions = []
