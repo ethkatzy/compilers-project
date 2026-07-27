@@ -126,11 +126,20 @@ body {
 
 .panels {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   grid-template-rows: 1fr 1fr;
+  grid-template-areas:
+    "tokens ast types"
+    "ir     ir  assembly";
   gap: 1px;
   background: var(--border);
 }
+
+.panel[data-stage="tokens"] { grid-area: tokens; }
+.panel[data-stage="ast"] { grid-area: ast; }
+.panel[data-stage="types"] { grid-area: types; }
+.panel[data-stage="ir"] { grid-area: ir; }
+.panel[data-stage="assembly"] { grid-area: assembly; }
 
 .panel {
   background: var(--bg);
@@ -291,6 +300,7 @@ footer code { font-family: var(--mono); }
   .panels {
     grid-template-columns: 1fr;
     grid-template-rows: 1fr;
+    grid-template-areas: none;
   }
 
   .panels .panel {
@@ -299,6 +309,7 @@ footer code { font-family: var(--mono); }
 
   .panels[data-active-stage="tokens"] .panel[data-stage="tokens"],
   .panels[data-active-stage="ast"] .panel[data-stage="ast"],
+  .panels[data-active-stage="types"] .panel[data-stage="types"],
   .panels[data-active-stage="ir"] .panel[data-stage="ir"],
   .panels[data-active-stage="assembly"] .panel[data-stage="assembly"] {
     display: flex;

@@ -10,12 +10,13 @@ const PY_FILES = [
   "ir.py",
   "astree.py",
   "parser.py",
+  "type_checker.py",
   "ir_generator.py",
   "assembly_generator.py",
   "webapi.py",
 ];
 
-const STAGES = ["tokens", "ast", "ir", "assembly"];
+const STAGES = ["tokens", "ast", "types", "ir", "assembly"];
 
 const EXAMPLES = [
   {
@@ -49,8 +50,16 @@ const EXAMPLES = [
     source: "var n = read_int();\nprint_int(n + 1);\n",
   },
   {
+    name: "Nested scopes (shadowing)",
+    source: "var x = 1;\n{\n    var x = 2;\n    print_int(x);\n}\nprint_int(x);\n",
+  },
+  {
     name: "Broken program (missing ';')",
     source: "var x = 5\nprint_int(x);\n",
+  },
+  {
+    name: "Broken program (type error)",
+    source: "print_int(true);\n",
   },
 ];
 
@@ -134,6 +143,31 @@ function renderTokens(tokens) {
       `<td class="mono">${escapeHtml(t.text)}</td>` +
       `<td>${escapeHtml(t.type)}</td>` +
       `<td>${t.location.line}:${t.location.column}</td>`;
+    tbody.appendChild(tr);
+  }
+  table.appendChild(tbody);
+  el.appendChild(table);
+}
+
+function renderTypes(bindings) {
+  const el = panelBody("types");
+  if (bindings.length === 0) {
+    const p = document.createElement("p");
+    p.className = "not-reached";
+    p.textContent = "No variable declarations in this program.";
+    el.appendChild(p);
+    return;
+  }
+  const table = document.createElement("table");
+  table.innerHTML = "<thead><tr><th>variable</th><th>type</th><th>scope</th><th>line:col</th></tr></thead>";
+  const tbody = document.createElement("tbody");
+  for (const b of bindings) {
+    const tr = document.createElement("tr");
+    tr.innerHTML =
+      `<td class="mono" style="padding-left: ${1 + b.depth * 1.5}em">${escapeHtml(b.name)}</td>` +
+      `<td class="mono">${escapeHtml(b.type)}</td>` +
+      `<td>${b.depth === 0 ? "top level" : `depth ${b.depth}`}</td>` +
+      `<td>${b.location.line}:${b.location.column}</td>`;
     tbody.appendChild(tr);
   }
   table.appendChild(tbody);
@@ -249,6 +283,7 @@ function renderResult(result) {
     }
     if (stage === "tokens") renderTokens(s.data);
     else if (stage === "ast") renderAst(s.data);
+    else if (stage === "types") renderTypes(s.data);
     else if (stage === "ir") renderIr(s.data);
     else if (stage === "assembly") renderAssembly(s.data);
   }

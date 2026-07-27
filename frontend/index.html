@@ -3,13 +3,15 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Compiler pipeline visualizer</title>
+  <title>Compiler pipeline visualiser</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <header class="toolbar">
-    <h1>Compiler pipeline visualizer</h1>
-    <select id="example-select"></select>
+    <h1>Compiler pipeline visualiser</h1>
+    <select id="example-select">
+      <option value="" disabled selected>Select a template</option>
+    </select>
     <button id="compile-btn" disabled>Compile</button>
     <span id="status">Loading Python runtime&hellip;</span>
   </header>
@@ -22,6 +24,7 @@
     <nav class="tabbar" aria-label="Pipeline stage">
       <button type="button" class="tab" data-stage="tokens">Tokens</button>
       <button type="button" class="tab" data-stage="ast">AST</button>
+      <button type="button" class="tab" data-stage="types">Types</button>
       <button type="button" class="tab" data-stage="ir">IR</button>
       <button type="button" class="tab" data-stage="assembly">Assembly</button>
     </nav>
@@ -35,8 +38,12 @@
         <h2>AST</h2>
         <div class="panel-body"></div>
       </article>
+      <article class="panel" data-stage="types">
+        <h2>Types</h2>
+        <div class="panel-body"></div>
+      </article>
       <article class="panel" data-stage="ir">
-        <h2>IR <span class="hint">(includes type checking)</span></h2>
+        <h2>IR</h2>
         <div class="panel-body"></div>
       </article>
       <article class="panel" data-stage="assembly">
@@ -48,8 +55,8 @@
 
   <footer>
     <p>
-      Shows the real compiler pipeline (tokenizer &rarr; parser &rarr; IR generator &rarr; assembly generator)
-      running client-side via Pyodide. Executing the generated assembly isn't shown here &mdash; see
+      Shows the real compiler pipeline (tokeniser &rarr; parser &rarr; type checker &rarr; IR generator &rarr;
+      assembly generator) running client-side via Pyodide. Executing the generated assembly isn't shown here &ndash; see
       <code>assembler.py</code> in the repo, which exists only as an internal correctness check.
     </p>
   </footer>

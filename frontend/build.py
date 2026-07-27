@@ -26,6 +26,7 @@ COMPILER_MODULES = [
     "ir.py",
     "astree.py",
     "parser.py",
+    "type_checker.py",
     "ir_generator.py",
     "assembly_generator.py",
 ]

@@ -1,7 +1,7 @@
 """Glue module loaded into Pyodide by the frontend. Not part of the compiler
-itself -- runs the real pipeline (tokenize -> parse -> generate_ir ->
-generate_assembly) stage by stage and serializes each stage's result (or
-the exception that stopped it) to JSON for app.js to render.
+itself -- runs the real pipeline (tokenize -> parse -> type_check ->
+generate_ir -> generate_assembly) stage by stage and serializes each stage's
+result (or the exception that stopped it) to JSON for app.js to render.
 """
 
 import json
@@ -13,6 +13,7 @@ from assembly_generator import generate_assembly
 from ir_generator import GLOBAL_SYMTAB, generate_ir
 from parser import parse
 from tokenizer import Location, Token, tokenize
+from type_checker import Binding, check_and_collect_bindings
 
 
 def _loc_to_dict(loc: Location) -> dict[str, int]:
@@ -51,6 +52,15 @@ def _ast_to_dict(node: ast.Expression) -> dict[str, Any]:
     return result
 
 
+def _binding_to_dict(binding: Binding) -> dict[str, Any]:
+    return {
+        "name": binding.name,
+        "type": repr(binding.type),
+        "location": _loc_to_dict(binding.location),
+        "depth": binding.depth,
+    }
+
+
 def compile_all(source: str) -> str:
     """Runs the full pipeline and returns a JSON string describing each
     stage. A stage that raises stops the pipeline -- later stages are
@@ -74,6 +84,18 @@ def compile_all(source: str) -> str:
     stages["ast"] = {"ok": True, "data": _ast_to_dict(tree)}
 
     try:
+        bindings = check_and_collect_bindings(tree)
+    except Exception as e:
+        stages["types"] = {"ok": False, "error": str(e)}
+        return json.dumps(result)
+    stages["types"] = {"ok": True, "data": [
+        _binding_to_dict(b) for b in bindings]}
+
+    try:
+        # generate_ir() runs type_check() again internally (see ir_generator.py) --
+        # harmless here since the "types" stage above already proved the program
+        # well-typed, but it's what makes generate_ir() safe to call on its own
+        # elsewhere in the codebase, independent of this frontend.
         instructions = generate_ir(GLOBAL_SYMTAB, tree)
     except Exception as e:
         stages["ir"] = {"ok": False, "error": str(e)}
